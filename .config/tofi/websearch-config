@@ -1,0 +1,19 @@
+prompt-text = "websearch# "
+
+text-color = #bd93f9
+prompt-color = #50fa7b
+selection-color = #50fa7b
+background-color = #181825dd
+
+width = 100%
+padding-left = 35%
+padding-top = 30%
+height = 100%
+border-width = 0
+outline-width = 0
+result-spacing = 14
+num-results = 8
+font = JetBrainsMono Nerd Font Semi Bold
+font-size = 18
+
+require-match = false

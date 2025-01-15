@@ -1,0 +1,137 @@
+set previewer ~/.config/lf/lf_kitty_preview
+set cleaner ~/.config/lf/lf_kitty_clean
+
+# Basic Settings
+set hidden true
+set ignorecase true
+set relativenumber
+set icons false
+set shellopts '-eu'
+set scrolloff 10
+set cursorpreviewfmt ""
+
+
+
+# Custom Functions
+cmd mkdir ${{
+  printf "Directory Name: "
+  read ans
+  mkdir $ans
+}}
+
+cmd mkfile ${{
+  printf "File Name: "
+  read ans
+  $EDITOR $ans
+}}
+
+cmd fzf_jump ${{
+  res="$(find . -maxdepth 3 | fzf --reverse --header='Jump to location')"
+  if [ -f "$res" ]; then
+    cmd="select"
+  elif [ -d "$res" ]; then
+    cmd="cd"
+  fi
+  lf -remote "send $id $cmd \"$res\""
+}}
+
+# Archive bindings
+cmd unarchive ${{
+  case "$f" in
+      *.zip) unzip "$f" ;;
+      *.tar.gz) tar -xzvf "$f" ;;
+      *.tar.bz2) tar -xjvf "$f" ;;
+      *.tar) tar -xvf "$f" ;;
+      *) echo "Unsupported format" ;;
+  esac
+}}
+
+cmd zip %zip -r "$f" "$f"
+cmd tar %tar cvf "$f.tar" "$f"
+cmd targz %tar cvzf "$f.tar.gz" "$f"
+
+cmd delete ${{
+    set -f
+    printf "$fx\n"
+    printf "delete?[y/n]"
+    read ans
+    [ "$ans" = "y" ] && rm -rf $fx
+}}
+
+
+cmd chmod ${{
+  printf "Mode Bits: "
+  read ans
+
+  for file in "$fx"
+  do
+    chmod $ans $file
+  done
+
+  lf -remote 'send reload'
+}}
+
+
+cmd copen ${{
+case $(file --mime-type "$f" -bL) in
+        text/*|application/json) $EDITOR "$f";;
+        text/*|application/pdf) zathura "$f";;
+	application/x-executable) "$f";;
+	inode/directory) tmp="/tmp/LF_LAST_DIR_PATH"; echo "$f" > $tmp; lf -remote "send $id quit";;
+    esac
+}}
+
+
+cmd openwindow ${{
+case $(file --mime-type "$f" -bL) in
+        text/*|application/json) hyprctl dispatch exec $TERMINAL $EDITOR "$f";;
+        text/*|application/pdf) hyprctl dispatch exec $TERMINAL zathura "$f";;
+	application/x-executable) hyprctl dispatch exec "$f";;
+	inode/directory)  hyprctl dispatch exec $TERMINAL "$f";;
+    esac
+}}
+
+
+cmd changedir ${{
+  tmp="/tmp/LF_LAST_DIR_PATH"
+  echo "$PWD" > $tmp
+  lf -remote "send $id quit"
+}}
+
+# Unbind Bindings
+map d
+map m
+map e
+map "'"
+map '"'
+map c
+map o
+
+#Archives
+map az zip
+map at tar
+map ag targz
+map au unarchive
+
+# Basic Functions
+map . set hidden!
+map DD delete
+map f fzf_jump
+map p paste
+map x cut
+map y copy
+map <enter> copen
+map R reload
+map C clear
+map mf mkfile
+map md mkdir
+map ch chmod
+map cd changedir
+map <esc> quit
+map o<enter> openwindow
+
+#movement
+map gc cd ~/.config
+map gh cd ~
+map gd cd ~/downloads
+
