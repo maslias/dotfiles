@@ -20,7 +20,6 @@ function M.config()
 			formatting.gofumpt,
 			formatting.goimports_reviser,
 			formatting.golines,
-			-- diagnostics.mypy,
 			diagnostics.mypy.with({
 				extra_args = function()
 					local virtual = os.getenv("VIRTUAL_ENV") or os.getenv("CONDA_PREFIX") or "/usr"

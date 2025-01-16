@@ -7,39 +7,8 @@ local M = {
 }
 
 function M.config()
-	local servers = {
-		"lua_ls",
-		"cssls",
-		"html",
-		"eslint",
-		"bashls",
-		"jsonls",
-		"gopls",
-		"intelephense",
-		"lemminx",
-		"templ",
-		"htmx",
-		"tailwindcss",
-		"docker_compose_language_service",
-		"pyright",
-		"marksman",
-	}
-
-	local server_tools = {
-		"prettier",
-		"stylua",
-		"fixjson",
-		"phpcs",
-		"php-cs-fixer",
-		"shfmt",
-		"xmlformatter",
-		"gofumpt",
-		"goimports-reviser",
-		"golines",
-		"mypy",
-		"ruff",
-		"black",
-	}
+	local servers = require("marciii.plugins.lsp.list.server-list").get_servers()
+	local tools = require("marciii.plugins.lsp.list.server-list").get_tools()
 
 	require("mason").setup({
 		ui = {
@@ -57,7 +26,7 @@ function M.config()
 	})
 
 	require("mason-tool-installer").setup({
-		ensure_installed = server_tools,
+		ensure_installed = tools,
 	})
 end
 

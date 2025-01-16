@@ -2,14 +2,11 @@ local M = {
 	"neovim/nvim-lspconfig",
 	event = { "BufReadPre", "BufNewFile" },
 	dependencies = {
-		{ "saghen/blink.cmp" },
 		{
 			"folke/lazydev.nvim",
 			ft = "lua", -- only load on lua files
 			opts = {
 				library = {
-					-- See the configuration section for more details
-					-- Load luvit types when the `vim.uv` word is found
 					{ path = "${3rd}/luv/library", words = { "vim%.uv" } },
 				},
 			},
@@ -100,6 +97,7 @@ M.toggle_inlay_hints = function()
 end
 
 function M.config()
+	-- keymaps
 	vim.keymap.set("n", "[d", "<cmd>lua vim.diagnostic.goto_prev()<cr>", { desc = "Prev Diagnostic" })
 	vim.keymap.set("n", "]d", "<cmd>lua vim.diagnostic.goto_next()<cr>", { desc = "Next Diagnostic" })
 
@@ -109,15 +107,6 @@ function M.config()
 		"<cmd>lua vim.lsp.buf.format({async = true, filter = function(client) return client.name ~= 'typescript-tools' end})<cr>",
 		{ desc = "lspconfig: format" }
 	)
-	-- vim.keymap.set(
-	-- 	"n",
-	-- 	"<leader>lh",
-	-- 	"<cmd>lua require('marciii.plugins.lsp.lspconfig').toggle_inlay_hints()<cr>",
-	-- 	{ desc = "Hints" }
-	-- )
-	-- vim.keymap.set("n", "<leader>ll", "<cmd>lua vim.lsp.codelens.run()<cr>", { desc = "CodeLens Action" })
-	-- vim.keymap.set("n", "<leader>lq", "<cmd>lua vim.diagnostic.setloclist()<cr>", { desc = "Quickfix" })
-	--
 	vim.keymap.set("n", "<leader>lr", "<cmd>lua vim.lsp.buf.rename()<cr>", { desc = "lspconfig: rename" })
 	vim.keymap.set(
 		{ "v", "n" },
@@ -126,27 +115,10 @@ function M.config()
 		{ desc = "lspconfig: code action" }
 	)
 
+	local servers = require("marciii.plugins.lsp.list.server-list").get_servers()
+
 	local lspconfig = require("lspconfig")
 	local icons = require("marciii.extra.icons")
-
-	local servers = {
-		"lua_ls",
-		"cssls",
-		"html",
-		"eslint",
-		-- "tsserver",
-		"bashls",
-		"jsonls",
-		"gopls",
-		"intelephense",
-		"lemminx",
-		"templ",
-		"htmx",
-		"tailwindcss",
-		"docker_compose_language_service",
-		"pyright",
-		"marksman",
-	}
 
 	local default_diagnostic_config = {
 		signs = {
@@ -177,10 +149,6 @@ function M.config()
 	for _, sign in ipairs(vim.tbl_get(vim.diagnostic.config(), "signs", "values") or {}) do
 		vim.fn.sign_define(sign.name, { texthl = sign.name, text = sign.text, numhl = sign.name })
 	end
-
-	-- vim.lsp.handlers["textDocument/hover"] = vim.lsp.with(vim.lsp.handlers.hover, { border = "rounded" })
-	-- vim.lsp.handlers["textDocument/signatureHelp"] = vim.lsp.with(vim.lsp.handlers.signature_help, { border = "rounded" })
-	-- require("lspconfig.ui.windows").default_options.border = "rounded"
 
 	for _, server in pairs(servers) do
 		local opts = {
