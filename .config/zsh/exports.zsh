@@ -19,6 +19,9 @@ export EDITOR=nvim
 export TERMINAL=kitty
 export BROWSER=firefox
 
+#kitty tmux
+export TERM=xterm-256color
+
 
 #zsh
 export HISTFILE=$XDG_STATE_HOME/zsh/history

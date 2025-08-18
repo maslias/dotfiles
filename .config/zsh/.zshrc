@@ -13,6 +13,7 @@ zinit light zsh-users/zsh-syntax-highlighting
 zinit light zsh-users/zsh-completions
 zinit light zsh-users/zsh-autosuggestions
 zinit light Aloxaf/fzf-tab
+# zinit light olets/zsh-transient-prompt
 
 # zinit ice depth=1
 # zinit light jeffreytse/zsh-vi-mode
@@ -53,9 +54,8 @@ source "$HOME/.config/zsh/keybinds.zsh"
 
 # Load Starship
 # eval "$(starship init zsh)"
-
-
 eval "$(oh-my-posh init zsh --config $XDG_CONFIG_HOME/ohmyposh/zen.toml)"
+
 eval "$(fzf --zsh)"
 eval "$(zoxide init --cmd cd zsh)"
 
@@ -67,3 +67,5 @@ function y() {
 	fi
 	rm -f -- "$tmp"
 }
+
+

@@ -1,2 +1,5 @@
-require("marciii.core")
-require("marciii.lazy")
+
+require('config.base')
+require('config.keymaps')
+require('config.lsp')
+require('config.addons')
