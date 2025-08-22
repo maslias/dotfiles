@@ -24,7 +24,8 @@ require('mason-tool-installer').setup({
     "gopls",
     "gofumpt",
     "goimports-reviser",
-    -- "cspell_ls"
+    "bashls"
+   -- "cspell_ls"
   }
 })
 
@@ -88,7 +89,8 @@ require("nvim-treesitter.configs").setup(
       'markdown_inline',
       'json',
       'yaml',
-      'go'
+      'go',
+      'bash'
     },
     auto_install = false,
     highlight = {

@@ -1,24 +1,144 @@
 #!/usr/bin/env bash
+start_with_prompt="zoxide:"
+start_with_get="get_zoxide_dirs"
 
-session=$1
-cmd=$2
-whicher=$(which $cmd)
+# Source functions for fzf
+get_ssh_hosts() {
+    cat "$HOME/.ssh/config" | rg 'Host ' | awk '{print "remote::" $2}'
+}
+get_home_dirs() {
+  fd -H -d 3 -t d -E .Trash . "$HOME" | sed "s|^$HOME|~|" | sed 's/^/home::/'
+}
+get_zoxide_dirs() {
+  zoxide query -l  | sed "s|^$HOME|~|" | sed 's/^/zoxide::/'
+}
+get_tmux_sessions() {
+  tmux list-sessions | sed -E "s/:.*$//" | sed 's/^/session::/'
+}
 
-if [[ ! -x $whicher ]]; then
-    echo "cmd is not executable"
-    exit
+
+
+# If script is called with a function name, execute that function
+if [[ "$1" == "remote" ]]; then
+    get_ssh_hosts
+    exit 0
+elif [[ "$1" == "home" ]]; then
+    get_home_dirs
+    exit 0
+elif [[ "$1" == "zoxide" ]]; then
+    get_zoxide_dirs
+    exit 0
+elif [[ "$1" == "session" ]]; then
+    get_tmux_sessions
+    exit 0
+else
+# If script is called without a function name
+  if tmux run 2>/dev/null; then
+    session_count=$(tmux list-sessions 2>/dev/null | wc -l)
+    if [[ $session_count -gt 0 ]]; then
+        start_with_get="get_tmux_sessions"
+        start_with_prompt="sessions:"
+    fi
+  fi
 fi
 
-if ! tmux has-session -t=$session 2>/dev/null; then
-    tmux new-session -d -s $session -c $HOME
-fi
 
-if ! tmux list-panes -t $session -F "#{pane_current_command}" | grep -q $cmd; then
-    tmux send-keys -t $session $cmd C-m
+
+
+
+# FZF input
+input=$( \
+    $start_with_get \
+        | fzf \
+        --delimiter :: \
+        --with-nth 2.. \
+        --no-sort \
+        --ansi \
+        --border-label ' tmux session manager ' \
+        --prompt "$start_with_prompt  " \
+        --bind "ctrl-f:change-prompt(find:  )+reload($0 home)" \
+        --bind "ctrl-d:change-prompt(zoxide:  )+reload($0 zoxide)" \
+        --bind "ctrl-r:change-prompt(remotes:  )+reload($0 remote)" \
+        --bind "ctrl-s:change-prompt(sessions:  )+reload($0 session)" \
+        --header '  ^s sessions ^r remotes ^f find ^d zoxide ^x kill ^n new ' \
+        --bind 'enter:become(echo select::{1}::{2})' \
+        --bind 'ctrl-y:become(echo select::{1}::{2})' \
+        --bind 'ctrl-n:become(echo new::home::{q})' \
+        --bind 'esc:become(echo quit::home::{q})'
+)
+
+modify_path_string() {
+    echo "$1" | sed "s|^~/||" | tr . _ | tr ' ' _ | awk -F'/' '
+    {
+        # Build array of non-empty parts
+        n = 0
+        for(i = 1; i <= NF; i++) 
+            if($i != "") parts[++n] = $i
+        
+        # Apply logic based on part count
+        if(n == 0) print ""
+        else if(n <= 2) printf "%s", (n==1 ? parts[1] : parts[1] "/" parts[2])
+        else print parts[1] "/-/" parts[n]
+    }'
+}
+
+# split arguments
+IFS='::'
+read -ra args <<<$input
+input_type=${args[0]}
+input_get=${args[2]}
+input_value=${args[4]}
+input_value_mod="$(modify_path_string $input_value)"
+input_path=$(echo ${args[4]} | sed "s|^~|$HOME|")
+
+
+# echo "input_path: $input_path"
+# echo "modified: $input_value_mod"
+# exit
+
+handle_session() {
+
+  # if [[ -z $TMUX ]]; then
+  #   exit 1
+  # fi
+
+  if [[ $# -eq 0 ]]; then
+    exit 1
+  fi
+
+  if [[ $# -eq 1 ]]; then
+    session=$1
+  elif [[ $# -eq 2 ]]; then
+    session=$1
+    path=$2
+  fi
+
+  if [[ -z $session ]]; then
+    exit 0
+  fi
+
+if ! tmux has-session -t="$session" 2>/dev/null; then
+  tmux new-session -ds "${session}" -c "${path}"
 fi
 
 if [[ "$TMUX" ]]; then
-    tmux switch-client -t $session
+    tmux switch-client -t "$session" 
 else
-    tmux attach -t $session
+    exec tmux attach -t "$session" 
 fi
+
+
+}
+
+
+if [[ $input_type = "quit" ]]; then
+    exit
+elif [[ $input_type = "new" ]]; then
+  handle_session "$input_value_mod"
+elif [[ $input_type = "select" && $input_get != "remote" ]]; then
+  handle_session "$input_value_mod" "$input_path"
+elif [[ $input_type = "select" && $input_get = "remote" ]]; then
+  handle_session "$input_value_mod"
+fi
+
+exit 0

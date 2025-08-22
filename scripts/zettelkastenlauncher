@@ -2,7 +2,9 @@
 date=$(date '+%Y-%m-%d')
 dir="zettelkasten"
 path="$XDG_ZETTELKASTEN_HOME"
-input=$(find $path \! \( -type d -path $path.git -prune \) -type f -name "*.md" | fzf --bind 'ctrl-n:become(echo n::{q})' --bind 'enter:become(echo o::{1})' --bind 'esc:become(echo x::{q})')
+input=$(find $path \! \( -type d -path $path.git -prune \) -type f -name "*.md" | fzf --bind 'ctrl-n:become(echo n::{q})' --bind 'enter:become(echo o::{1})' --bind 'esc:become(echo x::{q})' \
+ --prompt "zettelkasten:  " \
+)
 session=$dir
 
 IFS='::'
