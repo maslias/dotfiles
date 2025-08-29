@@ -68,8 +68,8 @@ function y() {
 }
 
 # tmux auto
-if ! tmux has-session -t="$(cat /etc/hostname)" 2>/dev/null; then
-  tmux new-session -ds "$(cat /etc/hostname)" -c "$HOME"
+if ! tmux has-session -t="$(date +"%F-%A")" 2>/dev/null; then
+  tmux new-session -ds "$(date +"%F-%A")" -c "$HOME"
 else
 fi
 
