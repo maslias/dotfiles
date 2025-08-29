@@ -1,8 +1,16 @@
-#:schema https://raw.githubusercontent.com/JanDeDobbeleer/oh-my-posh/main/themes/schema.json
-
-version = 2
-final_space = true
 console_title_template = '{{ .Shell }} in {{ .Folder }}'
+version = 3
+final_space = true
+
+[secondary_prompt]
+  template = '❯❯ '
+  foreground = '#f1ff5e'
+  background = 'transparent'
+
+[transient_prompt]
+  template = '❯ '
+  background = 'transparent'
+  foreground_templates = ['{{if gt .Code 0}}#ff6e5e{{end}}', '{{if eq .Code 0}}#f1ff5e{{end}}']
 
 [[blocks]]
   type = 'prompt'
@@ -10,63 +18,72 @@ console_title_template = '{{ .Shell }} in {{ .Folder }}'
   newline = true
 
   [[blocks.segments]]
-    type = 'session'
-    style = 'plain'
+    template = '{{ if .SSHSession }}󰣀 {{ end }}'
     foreground = '#ffbd5e'
     background = 'transparent'
-    # template = '{{ .FormattedMs }}'
-    template = '{{ if .SSHSession }}󰣀 {{ end }}'
-
-  [[blocks.segments]]
     type = 'session'
     style = 'plain'
-    foreground = '#5ea1ff'
-    background = 'transparent'
-    # template = '{{ .FormattedMs }}'
-    template = '{{ .HostName }}'
-
-  [[blocks.segments]]
-    type = 'session'
-    style = 'plain'
-    foreground = '#ff5ea0'
-    background = 'transparent'
-    template = ' 󰄾 '
-
-  [[blocks.segments]]
-    type = 'path'
-    style = 'plain'
-    background = 'transparent'
-    foreground = '#5eff6c'
-    template = '{{ .Path }}'
 
     [blocks.segments.properties]
+      cache_duration = 'none'
+
+  [[blocks.segments]]
+    template = '{{ .HostName }}'
+    foreground = '#5ea1ff'
+    background = 'transparent'
+    type = 'session'
+    style = 'plain'
+
+    [blocks.segments.properties]
+      cache_duration = 'none'
+
+  [[blocks.segments]]
+    template = ' 󰄾 '
+    foreground = '#ff5ea0'
+    background = 'transparent'
+    type = 'session'
+    style = 'plain'
+
+    [blocks.segments.properties]
+      cache_duration = 'none'
+
+  [[blocks.segments]]
+    template = '{{ .Path }}'
+    foreground = '#5eff6c'
+    background = 'transparent'
+    type = 'path'
+    style = 'plain'
+
+    [blocks.segments.properties]
+      cache_duration = 'none'
       style = 'full'
 
   [[blocks.segments]]
-    type = 'git'
-    style = 'plain'
+    template = ' {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <#ffbd5e>{{ if gt .Behind 0 }}󰛀{{ end }}{{ if gt .Ahead 0 }}󰛃{{ end }}</>'
     foreground = '#7b8496'
     background = 'transparent'
-    template = ' {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}*{{ end }} <#ffbd5e>{{ if gt .Behind 0 }}󰛀{{ end }}{{ if gt .Ahead 0 }}󰛃{{ end }}</>'
+    type = 'git'
+    style = 'plain'
 
     [blocks.segments.properties]
       branch_icon = ''
+      cache_duration = 'none'
       commit_icon = '@'
       fetch_status = true
-
 
 [[blocks]]
   type = 'rprompt'
   overflow = 'hidden'
 
   [[blocks.segments]]
-    type = 'executiontime'
-    style = 'plain'
+    template = '{{ .FormattedMs }}'
     foreground = '#ffbd5e'
     background = 'transparent'
-    template = '{{ .FormattedMs }}'
+    type = 'executiontime'
+    style = 'plain'
 
     [blocks.segments.properties]
+      cache_duration = 'none'
       threshold = 5000
 
 [[blocks]]
@@ -75,25 +92,11 @@ console_title_template = '{{ .Shell }} in {{ .Folder }}'
   newline = true
 
   [[blocks.segments]]
+    template = '❯'
+    background = 'transparent'
     type = 'text'
     style = 'plain'
-    foreground_templates = [
-      "{{if gt .Code 0}}#ff6e5e{{end}}",
-      "{{if eq .Code 0}}#f1ff5e{{end}}",
-    ]
-    background = 'transparent'
-    template = '❯'
+    foreground_templates = ['{{if gt .Code 0}}#ff6e5e{{end}}', '{{if eq .Code 0}}#f1ff5e{{end}}']
 
-[transient_prompt]
-  foreground_templates = [
-    "{{if gt .Code 0}}#ff6e5e{{end}}",
-    "{{if eq .Code 0}}#f1ff5e{{end}}",
-  ]
-  background = 'transparent'
-  template = '❯ '
-
-[secondary_prompt]
-  foreground = '#f1ff5e'
-  background = 'transparent'
-  template = '❯❯ '
-
+    [blocks.segments.properties]
+      cache_duration = 'none'
