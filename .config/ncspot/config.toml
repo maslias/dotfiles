@@ -1,3 +1,0 @@
-[credentials]
-username_cmd = "pass meta spotify user"
-password_cmd = "pass spotify"

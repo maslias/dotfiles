@@ -36,12 +36,13 @@ main() {
     set display-panes-active-colour "${THEME[white]}"
     set display-panes-colour "${THEME[orange]}"
 
-    set status-left "#[fg=${THEME[bg]},bold,nodim]#{?client_prefix,#[bg=${THEME[orange]}],#{?#{==:#{pane_current_command},ssh},#[bg=${THEME[pink]}],#[bg=${THEME[yellow]}]}} Tmux #[bg=${THEME[bg]}]#[fg=${THEME[white]}]  #S"
+    # set status-left "#[fg=${THEME[bg]}]#{?client_prefix,#[bg="${THEME[yellow]}",bold,nodim],#{?#{==:#{pane_current_command},ssh},#[bg=${THEME[pink]}],#[bg=${THEME[orange]},bold,nodim]}} Tmux #[bg=${THEME[bg]}]#[fg="${THEME[white]}",nobold,nodim]  #S"
+    set status-left "#[fg=${THEME[bg]},bold,nodim]#{?client_prefix,#[bg=${THEME[yellow]}],#[bg=${THEME[orange]}]} Tmux #[bg=${THEME[bg]}]#[fg="${THEME[white]}",nobold,nodim]  #S"
     setw window-status-separator "#[fg=${THEME[white]}]  •  "
-    setw window-status-current-format " #{?#{==:#{pane_current_command},ssh},#[fg=${THEME[pink]}],#[fg=${THEME[yellow]}]}$window_number_active #{?#{==:#{pane_current_command},ssh},󰢹,}"
+    setw window-status-current-format " #{?#{==:#{pane_current_command},ssh},#[fg=${THEME[pink]}],#[fg=${THEME[orange]}]}$window_number_active #{?#{==:#{pane_current_command},ssh},󰢹,}"
     setw window-status-format "#[fg=${THEME[grey]}]$window_number_inactive #{?#{==:#{pane_current_command},ssh},󰢹,}"
 
-    set status-right "#[fg=${THEME[white]}]󰢹 #{hostname} #[fg=${THEME[bg]}]#{?client_prefix,#[bg=${THEME[orange]}],#{?#{==:#{pane_current_command},ssh},#[bg=${THEME[pink]}],#[bg=${THEME[yellow]}]}}   "
+    set status-right "#[fg=${THEME[white]}]󰢹 #{hostname} #[fg=${THEME[bg]}]#{?client_prefix,#[bg=${THEME[yellow]}],#{?#{==:#{pane_current_command},ssh},#[bg=${THEME[pink]}],#[bg=${THEME[orange]}]}}   "
 
     tmux "${tmux_commands[@]}"
 

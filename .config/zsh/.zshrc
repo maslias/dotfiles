@@ -53,7 +53,6 @@ zstyle ':fzf-tab:complete:__zoxide_z:*' fzf-preview 'ls --color $realpath'
 source "$HOME/.config/zsh/keybinds.zsh"
 
 # Load Starship
-# eval "$(starship init zsh)"
 eval "$(oh-my-posh init zsh --config $XDG_CONFIG_HOME/ohmyposh/zen.toml)"
 
 eval "$(fzf --zsh)"
@@ -68,4 +67,12 @@ function y() {
 	rm -f -- "$tmp"
 }
 
+# tmux auto
+if ! tmux has-session -t="$(cat /etc/hostname)" 2>/dev/null; then
+  tmux new-session -ds "$(cat /etc/hostname)" -c "$HOME"
+else
+fi
 
+if [[  ! "$TMUX" ]]; then
+  tmux attach
+fi

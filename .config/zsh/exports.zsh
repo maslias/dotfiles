@@ -5,19 +5,17 @@ export XDG_STATE_HOME=$HOME/.local/state
 export XDG_CACHE_HOME=$HOME/.cache
 export XDG_BIN_HOME=$HOME/.local/bin
 export XDG_ZETTELKASTEN_HOME=$HOME/zettelkasten
-export XDG_SCRIPTS_HOME=$HOME/scripts
+export XDG_LOCAL_MASLIAS_BIN=$HOME/.local/share/maslias/bin
 
 #executeable bins
 export PATH=$XDG_BIN_HOME:$PATH
-export PATH=$XDG_SCRIPTS_HOME:$PATH
+export PATH=$XDG_LOCAL_MASLIAS_BIN:$PATH
 
-# adds ~/.local/bin and subfolders to $PATH
-# export PATH="${$(find $XDG_BIN_HOME -maxdepth 1 -type d -printf %p:)%%:}$PATH"
 
 #default
 export EDITOR=nvim
-export TERMINAL=kitty
-export BROWSER=firefox
+# export TERMINAL=kitty
+# export BROWSER=zen
 
 #kitty tmux
 export TERM=xterm-256color
@@ -58,9 +56,6 @@ export RUSTUP_HOME=$XDG_DATA_HOME/rustup
 export FZF_DEFAULT_COMMAND='find . \! \( -type d -path ./.git -prune \) \! \( -type d -path ./remote -prune \) \! -type d \! -name '\''*.tags'\'' -printf '\''%P\n'\'
 export FZF_CTRL_T_COMMAND='find . \! \( -type d -path ./.git -prune \) \! \( -type d -path ./remote -prune \) \! -type d \! -name '\''*.tags'\'' -printf '\''%P\n'\'
 export FZF_ALT_C_COMMAND='find . \! \( -type d -path ./.git -prune \) \! \( -type d -path ./remote -prune \)  \! -name '\''*.tags'\'' -printf '\''%P\n'\'
-
-# export SSH_ASKPASS_REQUIRE=force
-# export SSH_ASKPASS="asksshpass"
 
 
 #zinit

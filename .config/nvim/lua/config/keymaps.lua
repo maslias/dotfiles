@@ -1,9 +1,8 @@
 --general
-vim.keymap.set('n', '<leader>vs', ':update<CR> :source<CR>')
-vim.keymap.set('n', '<leader>vw', ':update<CR>')
-vim.keymap.set('n', '<leader>vx', ':Ex<CR>')
-vim.keymap.set('n', '<leader>vq', ':quit<CR>')
-vim.keymap.set('n', '<leader>vQ', ':quit!<CR>')
+vim.keymap.set('n', '<leader>W', ':update<CR> :source<CR>')
+vim.keymap.set('n', '<leader>w', ':update<CR>')
+vim.keymap.set('n', '<leader>x', ':quit<CR>')
+vim.keymap.set('n', '<leader>X', ':quit!<CR>')
 
 --navigation
 vim.keymap.set('n', '<C-Space>', '<C-^>', { desc = 'Switch to alternate buffer' })

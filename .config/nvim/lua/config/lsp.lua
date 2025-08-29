@@ -22,8 +22,8 @@ require('mason-tool-installer').setup({
     "yamlls",
     "yamlfix",
     "gopls",
-    "gofumpt",
-    "goimports-reviser",
+    -- "gofumpt",
+    -- "goimports-reviser",
     "bashls"
    -- "cspell_ls"
   }
