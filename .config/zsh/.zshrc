@@ -67,12 +67,42 @@ function y() {
 	rm -f -- "$tmp"
 }
 
+
+
+if ! tmux has-session -t="dailynote" 2>/dev/null; then
+
+  # check resources for second-brain
+  newsecondbrainnote "structure"
+
+  # check for todos
+  newsecondbrainnote "todo"
+
+  #check for dailynote
+  local daily_name=$(newsecondbrainnote "daily")
+
+  #check for dailynote
+  local todo_name=$(newsecondbrainnote "todo")
+
+  #check hubs entrys
+  hubssecondbrain
+
+
+
+  # tmux new-session -ds "dailynote" -c "$XDG_SECOND_BRAIN_HOME/dailys" "nvim $daily_name" \; split-window h "nvim $todo_name"
+  tmux new-session -ds "dailynote" -c "$XDG_SECOND_BRAIN_HOME/dailys"
+  tmux split-window -h -t "dailynote" -c "$XDG_SECOND_BRAIN_HOME/todos/"
+  tmux send-keys -t "dailynote":1.2 "nvim $todo_name" C-m
+  tmux send-keys -t "dailynote":1.1 "nvim $daily_name" C-m
+fi
+
 # tmux auto
 if ! tmux has-session -t="$(date +"%F-%A")" 2>/dev/null; then
-  tmux new-session -ds "$(date +"%F-%A")" -c "$HOME"
-else
+  tmux new-session -ds "$(date +"%F-%A")" -c "$HOME" 
 fi
+
 
 if [[  ! "$TMUX" ]]; then
   tmux attach
 fi
+
+

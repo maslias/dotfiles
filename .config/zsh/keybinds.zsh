@@ -5,6 +5,6 @@ bindkey '^[w' kill-region
 bindkey '^y' autosuggest-accept
 
 
-bindkey -s '^[Z' 'zettelkastenlauncher \n'
-bindkey -s '^[z' 'tmuxcmdlauncher  \n'
+# bindkey -s '^[Z' 'zettelkastenlauncher \n'
+# bindkey -s '^[z' 'tmuxcmdlauncher  \n'
 

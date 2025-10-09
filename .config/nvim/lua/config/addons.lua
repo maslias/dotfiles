@@ -12,8 +12,7 @@ vim.cmd.colorscheme("cyberdream")
 
 -- markdown
 vim.pack.add({
-  { src = "https://github.com/bullets-vim/bullets.vim" },
-  { src = "https://github.com/MeanderingProgrammer/render-markdown.nvim" },
+  { src = "https://github.com/bullets-vim/bullets.vim" }, { src = "https://github.com/MeanderingProgrammer/render-markdown.nvim" },
 })
 require("render-markdown").setup()
 
@@ -24,6 +23,7 @@ vim.g.bullets_delete_last_bullet_if_empty = 1
 -- minis
 vim.pack.add({
   { src = 'https://github.com/echasnovski/mini.pick' },
+  { src = 'https://github.com/echasnovski/mini.extra' },
   { src = 'https://github.com/echasnovski/mini.bracketed' },
   { src = 'https://github.com/echasnovski/mini.files' },
   { src = 'https://github.com/echasnovski/mini.icons' },
@@ -34,8 +34,9 @@ vim.pack.add({
   { src = 'https://github.com/echasnovski/mini.ai' },
   { src = 'https://github.com/echasnovski/mini.surround' },
   { src = 'https://github.com/echasnovski/mini.splitjoin' },
-  { src = 'https://github.com/echasnovski/mini.notify' },
+  -- { src = 'https://github.com/echasnovski/mini.notify' },
 })
+
 
 require("mini.pick").setup({
   mappings = {
@@ -43,10 +44,20 @@ require("mini.pick").setup({
   }
 })
 
+require("mini.extra").setup()
+
 vim.keymap.set('n', '<leader>ff', ":Pick files<CR>")
 vim.keymap.set('n', '<leader>fb', ":Pick buffers<CR>")
 vim.keymap.set('n', '<leader>fg', ":Pick grep_live<CR>")
 vim.keymap.set('n', '<leader>fh', ":Pick help<CR>")
+vim.keymap.set('n', '<leader>fs', ":Pick lsp scope='document_symbol'<CR>")
+vim.keymap.set('n', '<leader>fd', ":Pick lsp scope='type_definition'<CR>")
+
+
+
+
+
+
 
 require("mini.bracketed").setup()
 require("mini.files").setup()
@@ -64,7 +75,7 @@ require('mini.indentscope').setup()
 require('mini.ai').setup()
 require('mini.surround').setup()
 require('mini.statusline').setup()
-require('mini.notify').setup()
+-- require('mini.notify').setup()
 
 
 require("mini.splitjoin").setup({
@@ -97,32 +108,34 @@ require("stay-centered").setup({
 
 
 -- noice
--- vim.pack.add({
---   { src = "https://github.com/MunifTanjim/nui.nvim" },
---   { src = "https://github.com/folke/noice.nvim" },
--- })
--- require("noice").setup({
---   stages = "static",
---   cmdline = {
---     view = "cmdline",
---   },
---   lsp = {
---     progress = {
---     },
---     signature = {
---       enabled = false,
---       auto_open = {
---         enabled = false,
---         trigger = false,
---         luasnip = false,
---       },
---
---     }
---   },
---   presets = {
---     lsp_doc_border = true
---   }
--- })
+vim.pack.add({
+  { src = "https://github.com/MunifTanjim/nui.nvim" },
+  { src = "https://github.com/folke/noice.nvim" },
+})
+require("noice").setup({
+  stages = "static",
+  cmdline = {
+    view = "cmdline",
+  },
+  lsp = {
+    progress = {
+    },
+    signature = {
+      enabled = false,
+      auto_open = {
+        enabled = false,
+        trigger = false,
+        luasnip = false,
+      },
+
+    }
+  },
+  presets = {
+    lsp_doc_border = true
+  }
+})
+
+
 
 -- flash
 vim.pack.add({
@@ -197,4 +210,28 @@ vim.pack.add({
 
 require("spellwarn").setup({
   enable = true
+})
+
+
+
+vim.pack.add({
+  { src = "https://github.com/okuuva/auto-save.nvim" }
+})
+
+require("auto-save").setup({
+  enable = true,
+  event = { "InsertLeave", "TextChanged" },
+  opts = {
+    enabled = true,                                                          -- start auto-save when the plugin is loaded (i.e. when your package manager loads it)
+    trigger_events = {                                                       -- See :h events
+      immediate_save = { "BufLeave", "FocusLost", "QuitPre", "VimSuspend" }, -- vim events that trigger an immediate save
+      defer_save = {
+        "InsertLeave",
+        "TextChanged",
+      },
+      cancel_deferred_save = {
+        "InsertEnter",
+      },
+    }
+  }
 })

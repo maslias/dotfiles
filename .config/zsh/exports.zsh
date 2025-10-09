@@ -3,12 +3,11 @@ export XDG_DATA_HOME=$HOME/.local/share
 export XDG_CONFIG_HOME=$HOME/.config
 export XDG_STATE_HOME=$HOME/.local/state
 export XDG_CACHE_HOME=$HOME/.cache
-export XDG_BIN_HOME=$HOME/.local/bin
 export XDG_ZETTELKASTEN_HOME=$HOME/zettelkasten
+export XDG_SECOND_BRAIN_HOME=$HOME/second-brain
 export XDG_LOCAL_MASLIAS_BIN=$HOME/.local/share/maslias/bin
 
 #executeable bins
-export PATH=$XDG_BIN_HOME:$PATH
 export PATH=$XDG_LOCAL_MASLIAS_BIN:$PATH
 
 

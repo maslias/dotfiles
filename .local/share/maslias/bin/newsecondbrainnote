@@ -1,0 +1,263 @@
+#!/bin/bash
+
+note_type="$1"
+note_name="$2"
+note_tag="$3"
+
+
+extract_tags() {
+  local prime="$1"
+  local line="$prime","$2"
+  echo "$line" | grep -oE '#[^,# ]+' | paste -sd',' -
+}
+
+create_second_brain_structure() {
+if [ ! -d "$XDG_SECOND_BRAIN_HOME" ]; then
+  mkdir "$XDG_SECOND_BRAIN_HOME"
+  git init "$XDG_SECOND_BRAIN_HOME"
+fi
+if [ ! -d "$XDG_SECOND_BRAIN_HOME/dailys" ]; then
+  mkdir "$XDG_SECOND_BRAIN_HOME/dailys"
+fi
+if [ ! -d "$XDG_SECOND_BRAIN_HOME/hubs" ]; then
+  mkdir "$XDG_SECOND_BRAIN_HOME/hubs"
+fi
+if [ ! -d "$XDG_SECOND_BRAIN_HOME/meetings" ]; then
+  mkdir "$XDG_SECOND_BRAIN_HOME/meetings"
+fi
+if [ ! -d "$XDG_SECOND_BRAIN_HOME/tasks" ]; then
+  mkdir "$XDG_SECOND_BRAIN_HOME/tasks"
+fi
+if [ ! -d "$XDG_SECOND_BRAIN_HOME/todos" ]; then
+  mkdir "$XDG_SECOND_BRAIN_HOME/todos"
+fi
+if [ ! -d "$XDG_SECOND_BRAIN_HOME/zettelkasten/" ]; then
+  mkdir "$XDG_SECOND_BRAIN_HOME/zettelkasten/"
+fi
+
+echo "$XDG_SECOND_BRAIN_HOME"
+}
+
+create_daily() {
+path="$XDG_SECOND_BRAIN_HOME/dailys/$(date +"%F").md"
+
+if [ ! -e "$path" ]; then
+cat <<EOF >$path
+created: $(date +"%F %H:%M")
+tags: #daily
+hubs: [[daily]]
+
+# $(date +"%A, %B %d, %Y")
+
+---
+## Pre notes
+
+
+## Tasks
+
+
+## Meetings
+
+
+---
+# Daily notes
+
+
+
+EOF
+fi
+
+echo $path
+
+}
+
+create_task() {
+  note_name="$1"
+  note_tag="$2"
+  note_name_trimmed=$(echo "$note_name" | tr . _ | tr ' ' _)
+  path="$XDG_SECOND_BRAIN_HOME/tasks/$(date +"%F")-$note_name_trimmed.md"
+
+if [ ! -e "$path" ]; then
+cat <<EOF >$path
+created: $(date +"%F %H:%M")
+tags: $(extract_tags "#task" "$note_tag")
+hubs: [[task]]
+
+# $note_name
+
+---
+## summary
+prio: regular
+status: open
+description:  
+next step: 
+
+---
+# Task
+
+
+
+EOF
+fi
+
+echo $path
+
+}
+
+
+
+create_todo() {
+  path="$XDG_SECOND_BRAIN_HOME/todos/todos.md"
+
+if [ ! -e "$path" ]; then
+cat <<EOF >$path
+created: $(date +"%F %H:%M")
+tags: #todo
+hubs: [[todo]]
+
+# Todo
+
+
+EOF
+fi
+
+echo $path
+
+}
+
+create_meeting() {
+  note_name="$1"
+  note_tag="$2"
+  note_name_trimmed=$(echo "$note_name" | tr . _ | tr ' ' _)
+  path="$XDG_SECOND_BRAIN_HOME/meetings/$(date +"%F")-$note_name_trimmed.md"
+
+if [ ! -e "$path" ]; then
+cat <<EOF >$path
+created: $(date +"%F %H:%M")
+tags: $(extract_tags "#meeting" "$note_tag")
+hubs: [[meeting]]
+
+# $note_name
+
+---
+## summary
+date: $(date +"%A, %B %d, %Y - %H:%M")
+companies: $(echo "$(extract_tags "$note_tag")" | tr -d '#')
+
+attendees: 
+description: 
+
+---
+## Notes
+
+
+EOF
+fi
+
+echo $path
+
+}
+
+
+create_regular_note() {
+  note_name="$1"
+  note_tag="$2"
+  note_name_trimmed=$(echo "$note_name" | tr . _ | tr ' ' _)
+  path="$XDG_SECOND_BRAIN_HOME/zettelkasten/$note_name_trimmed.md"
+
+if [ ! -e "$path" ]; then
+cat <<EOF >$path
+created: $(date +"%F %H:%M")
+tags: $(extract_tags "#zettelkasten" "$note_tag")
+hubs: [[zettelkasten]]
+
+# $note_name
+
+---
+
+
+---
+## References
+
+
+
+EOF
+fi
+
+echo $path
+
+}
+
+
+
+get_basename() {
+    local filepath="$1"
+    basename "$filepath" .md
+}
+
+add_link_to_file() {
+  local target_file="$1"
+  local source_type="$2"
+  local source_file="$3"
+  local source_basename=$(get_basename "$source_file")
+  # sed -i "/^## $source_type$/a\- [[$source_basename]]" "$XDG_SECOND_BRAIN_HOME/dailys/$(date +"%F").md"
+  sed -i "/^$source_type$/a\- [[$source_basename]]" "$target_file"
+}
+
+open_file_in_tmux() {
+  file="$1"
+  session="second-brain"
+  if ! tmux has-session -t="$session" 2>/dev/null; then
+    tmux new-session -ds "$session" -c "$XDG_SECOND_BRAIN_HOME"
+  fi
+
+  if [ "$(tmux list-panes -t  "$session":1.1 -F "#{pane_current_command}")" = "nvim" ];then
+    echo "check zsh / nvim: nvim"
+    tmux send-keys -t "$session":1.1 ":e $file" C-m
+  elif [ "$(tmux list-panes -t  "$session":1.1 -F "#{pane_current_command}")" = "zsh" ];then
+    echo "check zsh / nvim: zsh"
+    tmux send-keys -t "$session":1.1 "nvim $file" C-m
+  fi
+
+  if [[  ! "$TMUX" ]]; then
+    tmux attach -t "$session"
+  else 
+    tmux switch-client -t "$session"
+  fi
+
+  echo $file
+}
+
+
+case "$note_type" in
+  "structure")
+    echo $(create_second_brain_structure)
+    ;;
+  "daily")
+    echo $(create_daily)
+  ;;
+  "todo")
+    echo $(create_todo)
+  ;;
+  "task")
+    # echo $(create_task "$note_name" "$note_tag")
+    echo $(open_file_in_tmux $(create_task "$note_name" "$note_tag"))
+    add_link_to_file "$XDG_SECOND_BRAIN_HOME/dailys/$(date +"%F").md" "## Tasks" "$note_name"
+    add_link_to_file "$XDG_SECOND_BRAIN_HOME/todos/todos.md" "# Todo" "$note_name"
+  ;;
+  "meeting")
+    # echo $(create_meeting "$note_name" "$note_tag")
+    echo $(open_file_in_tmux $(create_meeting "$note_name" "$note_tag"))
+    add_link_to_file "$XDG_SECOND_BRAIN_HOME/dailys/$(date +"%F").md" "## Meetings" "$note_name"
+  ;;
+  "note")
+    # echo $(create_regular_note "$note_name" "$note_tag")
+    echo $(open_file_in_tmux $(create_regular_note "$note_name" "$note_tag"))
+  ;;
+esac
+
+
+
+
+
+
