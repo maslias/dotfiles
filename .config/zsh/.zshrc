@@ -48,15 +48,7 @@ zstyle ':fzf-tab:complete:cd:*' fzf-preview 'ls --color $realpath'
 zstyle ':fzf-tab:complete:__zoxide_z:*' fzf-preview 'ls --color $realpath'
 
 
-
-
 source "$HOME/.config/zsh/keybinds.zsh"
-
-# Load Starship
-eval "$(oh-my-posh init zsh --config $XDG_CONFIG_HOME/ohmyposh/zen.toml)"
-
-eval "$(fzf --zsh)"
-eval "$(zoxide init --cmd cd zsh)"
 
 function y() {
 	local tmp="$(mktemp -t "yazi-cwd.XXXXXX")" cwd
@@ -66,7 +58,6 @@ function y() {
 	fi
 	rm -f -- "$tmp"
 }
-
 
 
 if ! tmux has-session -t="dailynote" 2>/dev/null; then
@@ -86,8 +77,6 @@ if ! tmux has-session -t="dailynote" 2>/dev/null; then
   #check hubs entrys
   hubssecondbrain
 
-
-
   # tmux new-session -ds "dailynote" -c "$XDG_SECOND_BRAIN_HOME/dailys" "nvim $daily_name" \; split-window h "nvim $todo_name"
   tmux new-session -ds "dailynote" -c "$XDG_SECOND_BRAIN_HOME/dailys"
   tmux split-window -h -t "dailynote" -c "$XDG_SECOND_BRAIN_HOME/todos/"
@@ -106,3 +95,8 @@ if [[  ! "$TMUX" ]]; then
 fi
 
 
+# Load Starship
+eval "$(oh-my-posh init zsh --config $XDG_CONFIG_HOME/ohmyposh/zen.toml)"
+eval "$(fzf --zsh)"
+eval "$(zoxide init --cmd cd zsh)"
+eval "$(direnv hook zsh)"

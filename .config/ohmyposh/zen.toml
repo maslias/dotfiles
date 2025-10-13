@@ -59,17 +59,44 @@ final_space = true
       style = 'full'
 
   [[blocks.segments]]
-    template = ' {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}{{ end }} {{ if gt .Behind 0 }}󰛀{{ end }}{{ if gt .Ahead 0 }}󰛃{{ end }}</>'
+      template = ' '
+      foreground = '#bd5eff'
+      background = 'transparent'
+      type = 'git'
+      style = 'plain'
+
+      [blocks.segments.properties]
+        cache_duration = 'none'
+
+  [[blocks.segments]]
+    template = ' {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}[*]{{ end }} {{ if gt .Behind 0 }}[!]{{ end }}{{ if gt .Ahead 0 }}[!]{{ end }}</>'
     foreground = '#7b8496'
     background = 'transparent'
     type = 'git'
     style = 'plain'
 
     [blocks.segments.properties]
-      branch_icon = ' '
+      branch_icon = ''
       cache_duration = 'none'
       commit_icon = '@'
       fetch_status = true
+
+  [[blocks.segments]]
+      template = '{{ if .Env.DEVBOX_SHELL_ENABLED }}󱄅{{ end }}'
+      foreground = '#bd5eff'
+      background = 'transparent'
+      type = 'git'  # Change to 'text' type, not 'git'
+      style = 'plain'
+
+      [blocks.segments.properties]
+        cache_duration = 'none'
+
+  [[blocks.segments]]
+    template = '{{ if .Env.DEVBOX_SHELL_ENABLED }} devbox {{ end }}'
+    foreground = '#7b8496'
+    background = 'transparent'
+    type = 'shell'
+    style = 'plain'
 
 [[blocks]]
   type = 'rprompt'
