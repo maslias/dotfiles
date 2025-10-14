@@ -1,0 +1,25 @@
+# https://taskfile.dev
+
+version: '3'
+
+vars:
+  GREETING: Hello, World!
+
+tasks:
+  default:
+    cmds:
+      - echo "{{.GREETING}}"
+    silent: true
+  init-claude:
+    desc: Create enviroment for claude dev with MCP and Custom Commands
+    summary: |
+      Create enviroment for claude dev.
+      Add MCPs: memory, context7, taskmanager-ai.
+      Create custom commands.
+
+    dir: '{{.USER_WORKING_DIR}}'
+    cmds:
+      - claude mcp add memory --scope project -- npx -y @modelcontextprotocol/server-memory
+      - claude mcp add context7 --scope project -- npx -y @upstash/context7-mcp
+      - claude mcp add taskmaster-ai --scope project -- npx -y task-master-ai
+    silent: true
