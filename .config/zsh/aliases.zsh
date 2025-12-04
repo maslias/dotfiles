@@ -1,8 +1,6 @@
 alias lf="y"
-alias task="go-task"
 alias cl="clear"
 alias ls='ls --color'
-alias c='clear'
 alias nv='nvim'
 alias nv.='nvim .'
 alias lg='lazygit'

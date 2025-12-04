@@ -27,13 +27,14 @@ autoload -Uz compinit
 compinit -d $XDG_CACHE_HOME/zsh/zcompdump-$ZSH_VERSION
 
 # pnpm
-export PNPM_HOME=$XDG_DATA_HOME/pnpm
-export PATH=$PNPM_HOME:$PATH
+# export PNPM_HOME=$XDG_DATA_HOME/pnpm
+# export PATH=$PNPM_HOME:$PATH
 
 #go lang
 export GOROOT=/usr/local/go
 export GOPATH=$XDG_DATA_HOME/go
-export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
+# export PATH=$GOPATH/bin:$GOROOT/bin:$PATH
+
 # export PATH=$PATH:$GOPATH/bin:$GOROOT/bin
 
 #less

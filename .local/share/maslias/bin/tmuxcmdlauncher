@@ -1,144 +1,219 @@
 #!/bin/bash
-start_with_prompt="zoxide:"
-start_with_get="get_zoxide_dirs"
 
-# Source functions for fzf
+# Data source functions
 get_ssh_hosts() {
-    cat "$HOME/.ssh/config" | rg 'Host ' | awk '{print "remote::" $2}'
+    rg 'Host ' "$HOME/.ssh/config" | awk '{print "remote::" $2}'
 }
+
 get_home_dirs() {
-  fd -H -d 3 -t d -E .Trash . "$HOME" | sed "s|^$HOME|~|" | sed 's/^/home::/'
-}
-get_zoxide_dirs() {
-  zoxide query -l  | sed "s|^$HOME|~|" | sed 's/^/zoxide::/'
-}
-get_tmux_sessions() {
-  tmux list-sessions | sed -E "s/:.*$//" | sed 's/^/session::/'
-}
-
-
-
-# If script is called with a function name, execute that function
-if [[ "$1" == "remote" ]]; then
-    get_ssh_hosts
-    exit 0
-elif [[ "$1" == "home" ]]; then
-    get_home_dirs
-    exit 0
-elif [[ "$1" == "zoxide" ]]; then
-    get_zoxide_dirs
-    exit 0
-elif [[ "$1" == "session" ]]; then
-    get_tmux_sessions
-    exit 0
-else
-# If script is called without a function name
-  if tmux run 2>/dev/null; then
-    session_count=$(tmux list-sessions 2>/dev/null | wc -l)
-    if [[ $session_count -gt 0 ]]; then
-        start_with_get="get_tmux_sessions"
-        start_with_prompt="sessions:"
+    if command -v fd &>/dev/null; then
+        fd -H -d 3 -t d -E .Trash . "$HOME" | sed "s|^$HOME|~|; s/^/home::/"
+    else
+        find "$HOME" -maxdepth 3 -type d -not -path "*/.*" -not -path "*/.Trash/*" 2>/dev/null | sed "s|^$HOME|~|; s/^/home::/"
     fi
-  fi
+}
+
+get_zoxide_dirs() {
+    zoxide query -l | sed "s|^$HOME|~|; s/^/zoxide::/"
+}
+
+get_tmux_sessions() {
+    tmux list-sessions 2>/dev/null | sed -E "s/:.*$//; s/^/session::/"
+}
+
+get_second_brain_notes() {
+    local base_dir="${XDG_SECOND_BRAIN_HOME:-$HOME/second-brain}"
+    local search_dir="${1:-$base_dir}"
+
+    if [[ ! -d "$search_dir" ]]; then
+        echo "note::ERROR: Directory not found: $search_dir"
+        return
+    fi
+
+    find "$search_dir" \! \( -type d -path "$search_dir/.git" -prune \) -type f -name "*.md" 2>/dev/null |
+        sed "s|^$base_dir/||; s/^/note::/"
+}
+
+get_second_brain_content() {
+    local base_dir="${XDG_SECOND_BRAIN_HOME:-$HOME/second-brain}"
+    local search_dir="$base_dir/zettelkasten"
+
+    if [[ ! -d "$search_dir" ]]; then
+        echo "content::ERROR: Directory not found: $search_dir"
+        return
+    fi
+
+    # Use ripgrep to search file contents, format as "content::filename:line_number:matched_line"
+    if command -v rg &>/dev/null; then
+        rg --line-number --no-heading --color=never --with-filename '' "$search_dir" 2>/dev/null |
+            sed "s|^$base_dir/||" |
+            awk -F: '{print "content::" $1 ":" $2 ":" substr($0, index($0,$3))}'
+    else
+        grep -r -n -H '' "$search_dir" 2>/dev/null |
+            sed "s|^$search_dir/||" |
+            awk -F: '{print "content::" $1 ":" $2 ":" substr($0, index($0,$3))}'
+    fi
+}
+
+# Handle function calls from fzf reload
+case "$1" in
+    remote)
+        get_ssh_hosts
+        exit 0
+        ;;
+    home)
+        get_home_dirs
+        exit 0
+        ;;
+    zoxide)
+        get_zoxide_dirs
+        exit 0
+        ;;
+    session)
+        get_tmux_sessions
+        exit 0
+        ;;
+    brain)
+        get_second_brain_content
+        exit 0
+        ;;
+    zettel)
+        base_dir="${XDG_SECOND_BRAIN_HOME:-$HOME/second-brain}"
+        get_second_brain_notes "$base_dir/zettelkasten"
+        exit 0
+        ;;
+esac
+
+# Determine initial source
+if (tmux info &>/dev/null || [[ -n "$TMUX" ]]) && [[ $(tmux list-sessions 2>/dev/null | wc -l) -gt 0 ]]; then
+    start_source="get_tmux_sessions"
+    start_prompt="sessions:"
+else
+    start_source="get_zoxide_dirs"
+    start_prompt="zoxide:"
 fi
 
+# FZF selection with action tracking
+action_file=$(mktemp)
+trap "rm -f $action_file" EXIT
 
+# Get absolute path to this script for fzf reload
+SCRIPT_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
 
+mode_file=$(mktemp)
+trap "rm -f $action_file $mode_file" EXIT
+echo "default" > "$mode_file"
 
-
-# FZF input
-input=$( \
-    $start_with_get \
-        | fzf \
-        --delimiter :: \
-        --with-nth 2.. \
-        --no-sort \
-        --ansi \
-        --border-label ' tmux session manager ' \
-        --prompt "$start_with_prompt  " \
-        --bind "ctrl-f:change-prompt(find:  )+reload($0 home)" \
-        --bind "ctrl-d:change-prompt(zoxide:  )+reload($0 zoxide)" \
-        --bind "ctrl-r:change-prompt(remotes:  )+reload($0 remote)" \
-        --bind "ctrl-s:change-prompt(sessions:  )+reload($0 session)" \
-        --header '  ^s sessions ^r remotes ^f find ^d zoxide ^x kill ^n new ' \
-        --bind 'enter:become(echo select::{1}::{2})' \
-        --bind 'ctrl-y:become(echo select::{1}::{2})' \
-        --bind 'ctrl-n:become(echo new::home::{q})' \
-        --bind 'esc:become(echo quit::home::{q})'
+fzf_output=$($start_source | fzf \
+    --delimiter :: \
+    --with-nth 2.. \
+    --no-sort \
+    --ansi \
+    --border-label ' tmux session manager ' \
+    --prompt "$start_prompt  " \
+    --bind "ctrl-f:change-prompt(find:  )+reload($SCRIPT_PATH home)+execute-silent(echo default > $mode_file)" \
+    --bind "ctrl-d:change-prompt(zoxide:  )+reload($SCRIPT_PATH zoxide)+execute-silent(echo default > $mode_file)" \
+    --bind "ctrl-r:change-prompt(remotes:  )+reload($SCRIPT_PATH remote)+execute-silent(echo default > $mode_file)" \
+    --bind "ctrl-s:change-prompt(sessions:  )+reload($SCRIPT_PATH session)+execute-silent(echo default > $mode_file)" \
+    --bind "ctrl-b:change-prompt(second-brain:  )+reload($SCRIPT_PATH zettel)+execute-silent(echo zettel > $mode_file)" \
+    --bind "ctrl-c:change-prompt(sb-content:  )+reload($SCRIPT_PATH brain)+execute-silent(echo brain > $mode_file)" \
+    --bind "ctrl-x:execute-silent([ '{1}' = 'session' ] && tmux kill-session -t '{2}' 2>/dev/null || true)+reload($SCRIPT_PATH session)+change-prompt(sessions:  )+execute-silent(echo default > $mode_file)" \
+    --header '  ^s sessions  ^r remotes  ^f find  ^d zoxide  ^b second-brain  ^c sb-content  ^x kill  ^n new ' \
+    --bind "enter:execute-silent(echo select > $action_file)+accept" \
+    --bind "ctrl-y:execute-silent(echo select > $action_file)+accept" \
+    --bind "ctrl-n:execute-silent(echo new > $action_file)+accept" \
+    --bind "esc:abort" \
+    --print-query
 )
 
-modify_path_string() {
-    echo "$1" | sed "s|^~/||" | tr . _ | tr ' ' _ | awk -F'/' '
+# Parse output
+action=$(cat "$action_file" 2>/dev/null || echo "select")
+mode=$(cat "$mode_file" 2>/dev/null || echo "default")
+
+# When --print-query is used, first line is query, second is selection (if any)
+if [[ -n "$fzf_output" ]]; then
+    query=$(echo "$fzf_output" | head -n1)
+    selection=$(echo "$fzf_output" | tail -n1)
+    # If only one line, it's just the query (no selection made)
+    [[ "$query" == "$selection" ]] && selection=""
+else
+    query=""
+    selection=""
+fi
+
+# Exit if user cancelled without creating new session
+[[ -z "$query" && -z "$selection" ]] && exit 0
+[[ -z "$selection" && "$action" != "new" ]] && exit 0
+
+# Convert path to session name
+path_to_session_name() {
+    echo "$1" | sed "s|^~/||" | tr '. ' '__' | awk -F'/' '
     {
-        # Build array of non-empty parts
         n = 0
-        for(i = 1; i <= NF; i++) 
-            if($i != "") parts[++n] = $i
-        
-        # Apply logic based on part count
+        for(i = 1; i <= NF; i++) if($i != "") parts[++n] = $i
         if(n == 0) print ""
         else if(n <= 2) printf "%s", (n==1 ? parts[1] : parts[1] "/" parts[2])
         else print parts[1] "/-/" parts[n]
     }'
 }
 
-# split arguments
-IFS='::'
-read -ra args <<<$input
-input_type=${args[0]}
-input_get=${args[2]}
-input_value=${args[4]}
-input_value_mod="$(modify_path_string $input_value)"
-input_path=$(echo ${args[4]} | sed "s|^~|$HOME|")
-
-
-# echo "input_path: $input_path"
-# echo "modified: $input_value_mod"
-# exit
-
+# Handle session creation/switching
 handle_session() {
+    local session="$1"
+    local path="${2:-$HOME}"
 
-  # if [[ -z $TMUX ]]; then
-  #   exit 1
-  # fi
+    [[ -z "$session" ]] && exit 0
 
-  if [[ $# -eq 0 ]]; then
-    exit 1
-  fi
+    tmux has-session -t="$session" 2>/dev/null || tmux new-session -ds "$session" -c "$path"
 
-  if [[ $# -eq 1 ]]; then
-    session=$1
-  elif [[ $# -eq 2 ]]; then
-    session=$1
-    path=$2
-  fi
-
-  if [[ -z $session ]]; then
-    exit 0
-  fi
-
-if ! tmux has-session -t="$session" 2>/dev/null; then
-  tmux new-session -ds "${session}" -c "${path}"
-fi
-
-if [[ "$TMUX" ]]; then
-    tmux switch-client -t "$session" 
-else
-    exec tmux attach -t "$session" 
-fi
-
-
+    if [[ -n "$TMUX" ]]; then
+        tmux switch-client -t "$session"
+    else
+        tmux attach -t "$session"
+    fi
 }
 
+# Handle note opening/creation for second-brain
+handle_note() {
+    local note_path="$1"
+    local base_dir="${XDG_SECOND_BRAIN_HOME:-$HOME/second-brain}"
+    local full_path="$base_dir/$note_path"
 
-if [[ $input_type = "quit" ]]; then
-    exit
-elif [[ $input_type = "new" ]]; then
-  handle_session "$input_value_mod"
-elif [[ $input_type = "select" && $input_get != "remote" ]]; then
-  handle_session "$input_value_mod" "$input_path"
-elif [[ $input_type = "select" && $input_get = "remote" ]]; then
-  handle_session "$input_value_mod"
+    # If note doesn't exist, create it with template
+    if [[ ! -f "$full_path" ]]; then
+        local note_name=$(basename "$note_path" .md)
+        note_name=${note_name//_/ }  # Convert underscores to spaces
+        newsecondbrainnote "note" "$note_name"
+    else
+        # Note exists, just open it
+        newsecondbrainnote "open" "$full_path"
+    fi
+}
+
+# Execute based on action
+if [[ "$action" == "new" ]]; then
+    # Check if we're in note mode
+    if [[ "$mode" == "brain" || "$mode" == "zettel" ]]; then
+        # newsecondbrainnote script creates notes in zettelkasten/ dir by default
+        # Just pass the note name, don't add path prefix
+        newsecondbrainnote "note" "$query"
+    else
+        handle_session "$(path_to_session_name "$query")" "$HOME"
+    fi
+else
+    type="${selection%%::*}"
+    value="${selection#*::}"
+
+    if [[ "$type" == "note" ]]; then
+        handle_note "$value"
+    elif [[ "$type" == "content" ]]; then
+        # Extract filename from content search result (format: filename:line:content)
+        file_path="${value%%:*}"
+        handle_note "$file_path"
+    elif [[ "$type" == "remote" ]]; then
+        handle_session "$value"
+    else
+        path=$(echo "$value" | sed "s|^~|$HOME|")
+        handle_session "$(path_to_session_name "$value")" "$path"
+    fi
 fi
-
-exit 0

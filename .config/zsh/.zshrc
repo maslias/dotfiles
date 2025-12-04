@@ -78,13 +78,14 @@ if ! tmux has-session -t="dailynote" 2>/dev/null; then
   hubssecondbrain
 
   # tmux new-session -ds "dailynote" -c "$XDG_SECOND_BRAIN_HOME/dailys" "nvim $daily_name" \; split-window h "nvim $todo_name"
-  tmux new-session -ds "dailynote" -c "$XDG_SECOND_BRAIN_HOME/dailys"
-  tmux split-window -h -t "dailynote" -c "$XDG_SECOND_BRAIN_HOME/todos/"
-  tmux send-keys -t "dailynote":1.2 "nvim $todo_name" C-m
-  tmux send-keys -t "dailynote":1.1 "nvim $daily_name" C-m
+  # tmux new-session -ds "dailynote" -c "$XDG_SECOND_BRAIN_HOME/dailys"
+  # tmux split-window -h -t "dailynote" -c "$XDG_SECOND_BRAIN_HOME/todos/"
+  # tmux send-keys -t "dailynote":1.1 "nvim $daily_name" C-m
+  # tmux send-keys -t "dailynote":1.2 "nvim $todo_name" C-m
+ tmux new-session -ds "dailynote" -c "$XDG_SECOND_BRAIN_HOME/dailys" \; split-window -t "dailynote":0 -h -c "$XDG_SECOND_BRAIN_HOME/todos/" \; send-keys -t "dailynote":0.1 "nvim $daily_name" C-m \; send-keys -t "dailynote":0.2 "nvim $todo_name" C-m
 fi
 
-# tmux auto
+
 if ! tmux has-session -t="$(date +"%F-%A")" 2>/dev/null; then
   tmux new-session -ds "$(date +"%F-%A")" -c "$HOME" 
 fi
@@ -96,9 +97,10 @@ fi
 
 
 # Load Starship
+eval "$(/opt/homebrew/bin/brew shellenv)"
 eval "$(oh-my-posh init zsh --config $XDG_CONFIG_HOME/ohmyposh/zen.toml)"
 eval "$(fzf --zsh)"
 eval "$(zoxide init --cmd cd zsh)"
 eval "$(direnv hook zsh)"
-eval "$(go-task --completion zsh)"
+eval "$(task --completion zsh)"
 

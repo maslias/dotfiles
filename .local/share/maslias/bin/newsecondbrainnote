@@ -207,21 +207,31 @@ add_link_to_file() {
 open_file_in_tmux() {
   file="$1"
   session="second-brain"
+  cmd="nvim"
+
   if ! tmux has-session -t="$session" 2>/dev/null; then
-    tmux new-session -ds "$session" -c "$XDG_SECOND_BRAIN_HOME"
+    # Create new session with nvim already running the file
+    tmux new-session -ds "$session" -c "$XDG_SECOND_BRAIN_HOME" "$cmd '$file'"
+  else
+    # Session exists, try to open file in existing nvim or create new window
+    if ! tmux send-keys -t "$session:$cmd" ":e $file" C-m 2>/dev/null; then
+      if ! tmux send-keys -t "$session:zsh" "$cmd '$file'" C-m 2>/dev/null; then
+        tmux new-window -t "$session"
+        tmux send-keys -t "$session:zsh" "$cmd '$file'" C-m
+      fi
+    fi
+
+    # Switch to nvim window if not already there
+    if [ ! "$(tmux list-windows -t "$session" -F '#W #F' | awk '$1 ~ "'$cmd'" && $2 ~ "*" {print $1}')" ]; then
+      if ! tmux select-window -t "$session:$cmd" 2>/dev/null; then
+        tmux select-window -t "$session:zsh" 2>/dev/null
+      fi
+    fi
   fi
 
-  if [ "$(tmux list-panes -t  "$session":1.1 -F "#{pane_current_command}")" = "nvim" ];then
-    echo "check zsh / nvim: nvim"
-    tmux send-keys -t "$session":1.1 ":e $file" C-m
-  elif [ "$(tmux list-panes -t  "$session":1.1 -F "#{pane_current_command}")" = "zsh" ];then
-    echo "check zsh / nvim: zsh"
-    tmux send-keys -t "$session":1.1 "nvim $file" C-m
-  fi
-
-  if [[  ! "$TMUX" ]]; then
+  if [[ ! "$TMUX" ]]; then
     tmux attach -t "$session"
-  else 
+  else
     tmux switch-client -t "$session"
   fi
 
@@ -253,6 +263,11 @@ case "$note_type" in
   "note")
     # echo $(create_regular_note "$note_name" "$note_tag")
     echo $(open_file_in_tmux $(create_regular_note "$note_name" "$note_tag"))
+  ;;
+  "open")
+    # Open existing file without creating template
+    # Expected: note_name is full path to file
+    echo $(open_file_in_tmux "$note_name")
   ;;
 esac
 
