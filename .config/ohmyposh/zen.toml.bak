@@ -1,5 +1,5 @@
 console_title_template = '{{ .Shell }} in {{ .Folder }}'
-version = 4
+version = 3
 final_space = true
 
 [secondary_prompt]
@@ -24,7 +24,7 @@ final_space = true
     type = 'session'
     style = 'plain'
 
-    [blocks.segments.options]
+    [blocks.segments.properties]
       cache_duration = 'none'
 
   [[blocks.segments]]
@@ -34,7 +34,7 @@ final_space = true
     type = 'session'
     style = 'plain'
 
-    [blocks.segments.options]
+    [blocks.segments.properties]
       cache_duration = 'none'
 
   [[blocks.segments]]
@@ -44,7 +44,7 @@ final_space = true
     type = 'session'
     style = 'plain'
 
-    [blocks.segments.options]
+    [blocks.segments.properties]
       cache_duration = 'none'
 
   [[blocks.segments]]
@@ -54,19 +54,19 @@ final_space = true
     type = 'path'
     style = 'plain'
 
-    [blocks.segments.options]
+    [blocks.segments.properties]
       cache_duration = 'none'
       style = 'full'
 
   [[blocks.segments]]
-    template = ' '
-    foreground = '#bd5eff'
-    background = 'transparent'
-    type = 'git'
-    style = 'plain'
+      template = ' '
+      foreground = '#bd5eff'
+      background = 'transparent'
+      type = 'git'
+      style = 'plain'
 
-    [blocks.segments.options]
-      cache_duration = 'none'
+      [blocks.segments.properties]
+        cache_duration = 'none'
 
   [[blocks.segments]]
     template = ' {{ .HEAD }}{{ if or (.Working.Changed) (.Staging.Changed) }}[*]{{ end }}{{ if gt .Behind 0 }}[!]{{ end }}{{ if gt .Ahead 0 }}[!]{{ end }}</>'
@@ -75,21 +75,21 @@ final_space = true
     type = 'git'
     style = 'plain'
 
-    [blocks.segments.options]
+    [blocks.segments.properties]
       branch_icon = ''
       cache_duration = 'none'
       commit_icon = '@'
       fetch_status = true
 
   [[blocks.segments]]
-    template = ' {{ if .Env.DEVBOX_SHELL_ENABLED }}󱄅{{ end }}'
-    foreground = '#bd5eff'
-    background = 'transparent'
-    type = 'shell'
-    style = 'plain'
+      template = ' {{ if .Env.DEVBOX_SHELL_ENABLED }}󱄅{{ end }}'
+      foreground = '#bd5eff'
+      background = 'transparent'
+      type = 'shell'
+      style = 'plain'
 
-    [blocks.segments.options]
-      cache_duration = 'none'
+      [blocks.segments.properties]
+        cache_duration = 'none'
 
   [[blocks.segments]]
     template = ' {{ if .Env.DEVBOX_SHELL_ENABLED }}devbox{{ end }}'
@@ -109,7 +109,7 @@ final_space = true
     type = 'executiontime'
     style = 'plain'
 
-    [blocks.segments.options]
+    [blocks.segments.properties]
       cache_duration = 'none'
       threshold = 5000
 
@@ -125,5 +125,5 @@ final_space = true
     style = 'plain'
     foreground_templates = ['{{if gt .Code 0}}#ff6e5e{{end}}', '{{if eq .Code 0}}#f1ff5e{{end}}']
 
-    [blocks.segments.options]
+    [blocks.segments.properties]
       cache_duration = 'none'

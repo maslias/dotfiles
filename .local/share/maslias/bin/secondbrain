@@ -1,0 +1,871 @@
+#!/usr/bin/env bash
+# Secondbrain CLI - Zettelkasten note management
+
+set -euo pipefail
+
+VERSION="1.0.0"
+
+show_help() {
+    cat << 'EOF'
+Usage: secondbrain [OPTIONS] "content #tags"
+
+Options:
+  -g, --generate    Create directory structure and hub files
+  -o, --open        Open created note in $EDITOR
+  -h, --help        Show this help
+  -v, --version     Show version
+
+Tags:
+  #fleeting, #flt   Fleeting note
+  #literature, #lit Literature note
+  #structure, #str  Structure note
+  #hub              Hub note
+  #meeting, #mtg    Meeting note
+  #todo, #tdo       Todo note
+  #todo #quick      Quick todo (appends to hub)
+
+Examples:
+  secondbrain "my thought #flt"
+  secondbrain "Weekly sync - discuss roadmap #mtg" --open
+  secondbrain "buy groceries - milk - eggs #tdo #qck"
+  secondbrain --generate
+EOF
+}
+
+show_version() {
+    echo "secondbrain $VERSION"
+}
+
+
+
+# =============================================================================
+# PARSING FUNCTIONS
+# =============================================================================
+
+# Extract all tags from input (words starting with #)
+# Returns space-separated tags
+sb_parse_tags() {
+    local input="$1"
+    local tags=""
+
+    for word in $input; do
+        if [[ "$word" =~ ^#[a-zA-Z0-9_-]+$ ]]; then
+            if [[ -n "$tags" ]]; then
+                tags="$tags $word"
+            else
+                tags="$word"
+            fi
+        fi
+    done
+
+    echo "$tags"
+}
+
+# Normalize short tag to full name
+sb_normalize_tag() {
+    local tag="$1"
+
+    case "$tag" in
+        "#flt")  echo "#fleeting" ;;
+        "#lit")  echo "#literature" ;;
+        "#str")  echo "#structure" ;;
+        "#mtg")  echo "#meeting" ;;
+        "#tdo")  echo "#todo" ;;
+        "#qck")  echo "#quick" ;;
+        *)       echo "$tag" ;;
+    esac
+}
+
+# Normalize all tags in a space-separated list
+sb_normalize_tags() {
+    local tags="$1"
+    local normalized=""
+
+    for tag in $tags; do
+        local norm
+        norm=$(sb_normalize_tag "$tag")
+        if [[ -n "$normalized" ]]; then
+            normalized="$normalized $norm"
+        else
+            normalized="$norm"
+        fi
+    done
+
+    echo "$normalized"
+}
+
+# Extract list members from input (substrings after " - ")
+# Returns newline-separated list members
+sb_parse_list_members() {
+    local input="$1"
+    local members=""
+
+    # Remove tags first
+    local no_tags
+    no_tags=$(echo "$input" | sed 's/#[a-zA-Z0-9_-]*//g')
+
+    # Split by " - " and skip the first part (main content)
+    local IFS_OLD="$IFS"
+    IFS=$'\n'
+    local parts
+    parts=($(echo "$no_tags" | sed 's/ - /\n/g'))
+    IFS="$IFS_OLD"
+
+    # Skip first part (main content), collect rest as list members
+    local first=true
+    for part in "${parts[@]}"; do
+        if $first; then
+            first=false
+            continue
+        fi
+        # Trim whitespace
+        part=$(echo "$part" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+        if [[ -n "$part" ]]; then
+            if [[ -n "$members" ]]; then
+                members="$members"$'\n'"$part"
+            else
+                members="$part"
+            fi
+        fi
+    done
+
+    echo "$members"
+}
+
+# Extract main string content (without tags and list members)
+sb_parse_string() {
+    local input="$1"
+
+    # Remove tags
+    local no_tags
+    no_tags=$(echo "$input" | sed 's/#[a-zA-Z0-9_-]*//g')
+
+    # Take only the part before first " - "
+    local content
+    content=$(echo "$no_tags" | sed 's/ - .*//')
+
+    # Trim whitespace
+    content=$(echo "$content" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+
+    echo "$content"
+}
+
+# =============================================================================
+# VALIDATION FUNCTIONS
+# =============================================================================
+
+# Important tags that trigger specific note types
+IMPORTANT_TAGS=("fleeting" "literature" "structure" "hub" "meeting" "todo")
+
+# Check if tag is an important tag (after normalization)
+sb_is_important_tag() {
+    local tag="$1"
+    # Remove # prefix if present
+    tag="${tag#\#}"
+
+    for important in "${IMPORTANT_TAGS[@]}"; do
+        if [[ "$tag" == "$important" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+# Validate tags and return the note type to create
+# Returns: fleeting|literature|structure|hub|meeting|todo|quick_todo
+# Exits with error if conflicting important tags found
+sb_validate_tags() {
+    local tags="$1"
+    local normalized
+    normalized=$(sb_normalize_tags "$tags")
+
+    local important_found=()
+    local has_todo=false
+    local has_quick=false
+
+    for tag in $normalized; do
+        local tag_name="${tag#\#}"
+
+        if [[ "$tag_name" == "todo" ]]; then
+            has_todo=true
+        fi
+        if [[ "$tag_name" == "quick" ]]; then
+            has_quick=true
+        fi
+
+        if sb_is_important_tag "$tag_name"; then
+            important_found+=("$tag_name")
+        fi
+    done
+
+    # Special case: todo + quick is valid
+    if $has_todo && $has_quick; then
+        echo "quick_todo"
+        return 0
+    fi
+
+    # Check for conflicts
+    if [[ ${#important_found[@]} -gt 1 ]]; then
+        echo "Error: Conflicting tags found: ${important_found[*]}. Use only one." >&2
+        return 1
+    fi
+
+    # Return found type or default to fleeting
+    if [[ ${#important_found[@]} -eq 1 ]]; then
+        echo "${important_found[0]}"
+    else
+        echo "fleeting"
+    fi
+}
+
+# Check if directory exists, error if not
+sb_check_directory() {
+    local dir="$1"
+
+    if [[ ! -d "$dir" ]]; then
+        echo "Error: Directory not found: $dir. Run 'secondbrain --generate' first." >&2
+        return 1
+    fi
+}
+
+# Check if XDG_SECOND_BRAIN_HOME is set
+sb_check_env() {
+    if [[ -z "${XDG_SECOND_BRAIN_HOME:-}" ]]; then
+        echo "Error: XDG_SECOND_BRAIN_HOME is not set." >&2
+        return 1
+    fi
+}
+
+# Check if hub file exists
+sb_check_hub_file() {
+    local hub_file="$1"
+
+    if [[ ! -f "$hub_file" ]]; then
+        echo "Error: $(basename "$hub_file") not found. Run 'secondbrain --generate' first." >&2
+        return 1
+    fi
+}
+
+# =============================================================================
+# UTILITY FUNCTIONS
+# =============================================================================
+
+# Generate timestamp in YYYYMMDDHHMMSS format
+sb_generate_timestamp() {
+    date +"%Y%m%d%H%M%S"
+}
+
+# Generate datetime in YYYY-MM-DD HH:MM:SS format
+sb_generate_datetime() {
+    date +"%Y-%m-%d %H:%M:%S"
+}
+
+# Convert string to kebab-case (only alphanumeric and hyphens)
+sb_to_kebab() {
+    local input="$1"
+
+    echo "$input" | \
+        tr '[:upper:]' '[:lower:]' | \
+        sed 's/[^a-z0-9]/-/g' | \
+        sed -E 's/-+/-/g' | \
+        sed 's/^-//' | \
+        sed 's/-$//'
+}
+
+# Generate YAML frontmatter
+sb_generate_frontmatter() {
+    local tags="$1"
+    local datetime
+    datetime=$(sb_generate_datetime)
+
+    # Convert space-separated tags to comma-separated for YAML array
+    local tags_yaml
+    tags_yaml=$(echo "$tags" | sed 's/ /, /g')
+
+    echo "created: $datetime"
+    echo "tags: [$tags_yaml]"
+}
+
+# =============================================================================
+# NOTE CREATION FUNCTIONS
+# =============================================================================
+
+# Create a fleeting note
+# Args: string_content, list_members (newline-separated), tags (space-separated)
+# Returns: path to created file
+sb_create_fleeting() {
+    local string_content="$1"
+    local list_members="$2"
+    local tags="$3"
+
+    sb_check_env || return 1
+
+    local dest_dir="$XDG_SECOND_BRAIN_HOME/fleeting"
+    sb_check_directory "$dest_dir" || return 1
+
+    local timestamp
+    timestamp=$(sb_generate_timestamp)
+    local filename="${timestamp}-flt.md"
+    local filepath="$dest_dir/$filename"
+
+    # Normalize tags
+    local normalized_tags
+    normalized_tags=$(sb_normalize_tags "$tags")
+
+    # Build file content
+    {
+        sb_generate_frontmatter "$normalized_tags"
+        echo ""
+        echo "---"
+        echo ""
+        echo "# Fleet"
+        echo ""
+        echo "$string_content"
+
+        # Add list members if present
+        if [[ -n "$list_members" ]]; then
+            echo ""
+            while IFS= read -r member; do
+                echo "- $member"
+            done <<< "$list_members"
+        fi
+    } > "$filepath"
+
+    echo "$filepath"
+}
+
+# Add a link to a hub file under a specific header
+# Args: hub_file, header_name, link_text (filename without extension)
+sb_add_link_to_hub() {
+    local hub_file="$1"
+    local header_name="$2"
+    local link_text="$3"
+
+    sb_check_hub_file "$hub_file" || return 1
+
+    # Find the line with the header and insert link after it
+    local temp_file
+    temp_file=$(mktemp)
+    local found_header=false
+    local link_added=false
+
+    while IFS= read -r line; do
+        echo "$line" >> "$temp_file"
+        if [[ "$line" == "## $header_name" ]] && ! $link_added; then
+            found_header=true
+        elif $found_header && ! $link_added; then
+            # Skip empty lines after header, then add link
+            if [[ -z "$line" ]]; then
+                echo "- [[$link_text]]" >> "$temp_file"
+                link_added=true
+            fi
+        fi
+    done < "$hub_file"
+
+    if $link_added; then
+        mv "$temp_file" "$hub_file"
+    else
+        rm "$temp_file"
+        echo "Error: Could not find header '## $header_name' in $hub_file" >&2
+        return 1
+    fi
+}
+
+# Create a literature note
+# Args: string_content, list_members (newline-separated), tags (space-separated)
+# Returns: path to created file
+sb_create_literature() {
+    local string_content="$1"
+    local list_members="$2"
+    local tags="$3"
+
+    sb_check_env || return 1
+
+    local dest_dir="$XDG_SECOND_BRAIN_HOME/literature"
+    sb_check_directory "$dest_dir" || return 1
+
+    local timestamp
+    timestamp=$(sb_generate_timestamp)
+    local kebab
+    kebab=$(sb_to_kebab "$string_content")
+    local filename="${timestamp}-lit-${kebab}.md"
+    local filepath="$dest_dir/$filename"
+
+    # Normalize tags
+    local normalized_tags
+    normalized_tags=$(sb_normalize_tags "$tags")
+
+    # Build file content
+    {
+        sb_generate_frontmatter "$normalized_tags"
+        echo "source:"
+        echo ""
+        echo "---"
+        echo ""
+        echo "# Literature: $string_content"
+        echo ""
+        echo "## Key Points"
+        echo ""
+
+        # Add list members if present
+        if [[ -n "$list_members" ]]; then
+            while IFS= read -r member; do
+                echo "- $member"
+            done <<< "$list_members"
+        fi
+
+        echo ""
+        echo "## My Thoughts"
+        echo ""
+        echo ""
+        echo "## Ideas to Develop"
+        echo ""
+        echo ""
+        echo "## Source"
+        echo ""
+    } > "$filepath"
+
+    echo "$filepath"
+}
+
+# Create a meeting note
+# Args: string_content, list_members (newline-separated), tags (space-separated)
+# Returns: path to created file
+sb_create_meeting() {
+    local string_content="$1"
+    local list_members="$2"
+    local tags="$3"
+
+    sb_check_env || return 1
+
+    local dest_dir="$XDG_SECOND_BRAIN_HOME/office"
+    sb_check_directory "$dest_dir" || return 1
+
+    local timestamp
+    timestamp=$(sb_generate_timestamp)
+    local kebab
+    kebab=$(sb_to_kebab "$string_content")
+    local filename="${timestamp}-mtg-${kebab}.md"
+    local filepath="$dest_dir/$filename"
+    local link_name="${timestamp}-mtg-${kebab}"
+
+    # Normalize tags
+    local normalized_tags
+    normalized_tags=$(sb_normalize_tags "$tags")
+
+    # Build file content
+    {
+        sb_generate_frontmatter "$normalized_tags"
+        echo "participants:"
+        echo ""
+        echo "---"
+        echo ""
+        echo "# Meeting: $string_content"
+        echo ""
+
+        # Add list members if present
+        if [[ -n "$list_members" ]]; then
+            while IFS= read -r member; do
+                echo "- $member"
+            done <<< "$list_members"
+        fi
+
+        echo ""
+        echo "## Takeaways"
+        echo ""
+        echo ""
+        echo "## Related Hub"
+        echo ""
+        echo "[[hub-meetings]]"
+    } > "$filepath"
+
+    # Add link to hub-meetings.md
+    local hub_file="$XDG_SECOND_BRAIN_HOME/structure/hub-meetings.md"
+    sb_add_link_to_hub "$hub_file" "Last Meetings" "$link_name" || true
+
+    echo "$filepath"
+}
+
+# Create a todo note
+# Args: string_content, list_members (newline-separated), tags (space-separated)
+# Returns: path to created file
+sb_create_todo() {
+    local string_content="$1"
+    local list_members="$2"
+    local tags="$3"
+
+    sb_check_env || return 1
+
+    local dest_dir="$XDG_SECOND_BRAIN_HOME/office"
+    sb_check_directory "$dest_dir" || return 1
+
+    local timestamp
+    timestamp=$(sb_generate_timestamp)
+    local kebab
+    kebab=$(sb_to_kebab "$string_content")
+    local filename="${timestamp}-tdo-${kebab}.md"
+    local filepath="$dest_dir/$filename"
+    local link_name="${timestamp}-tdo-${kebab}"
+
+    # Normalize tags
+    local normalized_tags
+    normalized_tags=$(sb_normalize_tags "$tags")
+
+    # Build file content
+    {
+        sb_generate_frontmatter "$normalized_tags"
+        echo "status: open"
+        echo ""
+        echo "---"
+        echo ""
+        echo "# Todo: $string_content"
+        echo ""
+
+        # Add list members as tasks if present
+        if [[ -n "$list_members" ]]; then
+            echo "## Tasks"
+            echo ""
+            while IFS= read -r member; do
+                echo "- [ ] $member"
+            done <<< "$list_members"
+            echo ""
+        fi
+
+        echo "## Takeaways"
+        echo ""
+        echo ""
+        echo "## Related Hub"
+        echo ""
+        echo "[[hub-todos]]"
+    } > "$filepath"
+
+    # Add link to hub-todos.md
+    local hub_file="$XDG_SECOND_BRAIN_HOME/structure/hub-todos.md"
+    sb_add_link_to_hub "$hub_file" "Ongoing Todos" "$link_name" || true
+
+    echo "$filepath"
+}
+
+# Add a quick todo to hub-todos.md
+# Args: string_content, list_members (newline-separated)
+# Returns: path to hub file
+sb_create_quick_todo() {
+    local string_content="$1"
+    local list_members="$2"
+
+    sb_check_env || return 1
+
+    local hub_file="$XDG_SECOND_BRAIN_HOME/structure/hub-todos.md"
+    sb_check_hub_file "$hub_file" || return 1
+
+    # Build the todo items to insert
+    local todo_block=""
+    todo_block="- [ ] $string_content"
+
+    # Add sub-items if list members present
+    if [[ -n "$list_members" ]]; then
+        while IFS= read -r member; do
+            todo_block="$todo_block"$'\n'"    - [ ] $member"
+        done <<< "$list_members"
+    fi
+
+    # Insert after "## Quick Todos" header
+    local temp_file
+    temp_file=$(mktemp)
+    local found_header=false
+    local inserted=false
+
+    while IFS= read -r line; do
+        echo "$line" >> "$temp_file"
+        if [[ "$line" == "## Quick Todos" ]] && ! $inserted; then
+            found_header=true
+        elif $found_header && ! $inserted; then
+            # Insert after first empty line following header
+            if [[ -z "$line" ]]; then
+                echo "$todo_block" >> "$temp_file"
+                inserted=true
+            fi
+        fi
+    done < "$hub_file"
+
+    if $inserted; then
+        mv "$temp_file" "$hub_file"
+    else
+        rm "$temp_file"
+        echo "Error: Could not find '## Quick Todos' header in $hub_file" >&2
+        return 1
+    fi
+
+    echo "$hub_file"
+}
+
+# Create a structure note
+# Args: string_content, list_members (newline-separated), tags (space-separated)
+# Returns: path to created file
+sb_create_structure() {
+    local string_content="$1"
+    local list_members="$2"
+    local tags="$3"
+
+    sb_check_env || return 1
+
+    local dest_dir="$XDG_SECOND_BRAIN_HOME/structure"
+    sb_check_directory "$dest_dir" || return 1
+
+    local timestamp
+    timestamp=$(sb_generate_timestamp)
+    local kebab
+    kebab=$(sb_to_kebab "$string_content")
+    local filename="${timestamp}-str-${kebab}.md"
+    local filepath="$dest_dir/$filename"
+
+    # Normalize tags
+    local normalized_tags
+    normalized_tags=$(sb_normalize_tags "$tags")
+
+    # Build file content
+    {
+        sb_generate_frontmatter "$normalized_tags"
+        echo ""
+        echo "---"
+        echo ""
+        echo "# Structure: $string_content"
+        echo ""
+
+        # Add list members if present
+        if [[ -n "$list_members" ]]; then
+            while IFS= read -r member; do
+                echo "- $member"
+            done <<< "$list_members"
+        fi
+    } > "$filepath"
+
+    echo "$filepath"
+}
+
+# Create a hub note
+# Args: string_content, list_members (newline-separated), tags (space-separated)
+# Returns: path to created file
+sb_create_hub() {
+    local string_content="$1"
+    local list_members="$2"
+    local tags="$3"
+
+    sb_check_env || return 1
+
+    local dest_dir="$XDG_SECOND_BRAIN_HOME/structure"
+    sb_check_directory "$dest_dir" || return 1
+
+    local timestamp
+    timestamp=$(sb_generate_timestamp)
+    local kebab
+    kebab=$(sb_to_kebab "$string_content")
+    local filename="${timestamp}-hub-${kebab}.md"
+    local filepath="$dest_dir/$filename"
+
+    # Normalize tags
+    local normalized_tags
+    normalized_tags=$(sb_normalize_tags "$tags")
+
+    # Build file content
+    {
+        sb_generate_frontmatter "$normalized_tags"
+        echo ""
+        echo "---"
+        echo ""
+        echo "# Hub: $string_content"
+        echo ""
+
+        # Add list members if present
+        if [[ -n "$list_members" ]]; then
+            while IFS= read -r member; do
+                echo "- $member"
+            done <<< "$list_members"
+        fi
+    } > "$filepath"
+
+    echo "$filepath"
+}
+
+# Generate the second brain directory structure
+sb_generate_structure() {
+    sb_check_env || return 1
+
+    local base="$XDG_SECOND_BRAIN_HOME"
+
+    # Create directories (never delete existing)
+    local dirs=("fleeting" "literature" "permanent" "structure" "research" "office")
+    for dir in "${dirs[@]}"; do
+        if [[ ! -d "$base/$dir" ]]; then
+            mkdir -p "$base/$dir"
+            echo "Created: $base/$dir"
+        fi
+    done
+
+    # Create hub-todos.md if missing
+    local hub_todos="$base/structure/hub-todos.md"
+    if [[ ! -f "$hub_todos" ]]; then
+        local datetime
+        datetime=$(sb_generate_datetime)
+        cat > "$hub_todos" << EOF
+created: $datetime
+tags: [#hub, #todo]
+
+---
+
+# Hub: Todos
+
+## Quick Todos
+
+
+## Ongoing Todos
+
+
+## Closed Todos
+
+EOF
+        echo "Created: $hub_todos"
+    fi
+
+    # Create hub-meetings.md if missing
+    local hub_meetings="$base/structure/hub-meetings.md"
+    if [[ ! -f "$hub_meetings" ]]; then
+        local datetime
+        datetime=$(sb_generate_datetime)
+        cat > "$hub_meetings" << EOF
+created: $datetime
+tags: [#hub, #meeting]
+
+---
+
+# Hub: Meetings
+
+## Last Meetings
+
+
+## Older Meetings
+
+EOF
+        echo "Created: $hub_meetings"
+    fi
+
+    echo "Structure generation complete."
+}
+
+main() {
+    local open_after=false
+    local generate=false
+    local input=""
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -h|--help)
+                show_help
+                exit 0
+                ;;
+            -v|--version)
+                show_version
+                exit 0
+                ;;
+            -g|--generate)
+                generate=true
+                shift
+                ;;
+            -o|--open)
+                open_after=true
+                shift
+                ;;
+            -*)
+                echo "Error: Unknown option: $1" >&2
+                echo "Use --help for usage information." >&2
+                exit 1
+                ;;
+            *)
+                input="$1"
+                shift
+                ;;
+        esac
+    done
+
+    # Handle --generate (no input required)
+    if $generate; then
+        sb_generate_structure
+        exit 0
+    fi
+
+    # Require input for note creation
+    if [[ -z "$input" ]]; then
+        echo "Error: No content provided." >&2
+        echo "Use --help for usage information." >&2
+        exit 1
+    fi
+
+    # Parse input
+    local tags
+    tags=$(sb_parse_tags "$input")
+
+    local list_members
+    list_members=$(sb_parse_list_members "$input")
+
+    local string_content
+    string_content=$(sb_parse_string "$input")
+
+    if [[ -z "$string_content" ]]; then
+        echo "Error: No content provided." >&2
+        exit 1
+    fi
+
+    # Validate tags and determine note type
+    local note_type
+    note_type=$(sb_validate_tags "$tags") || exit 1
+
+    # If no important tag, add #fleeting to tags
+    if [[ "$note_type" == "fleeting" ]] && [[ "$tags" != *"#fleeting"* ]] && [[ "$tags" != *"#flt"* ]]; then
+        if [[ -n "$tags" ]]; then
+            tags="$tags #fleeting"
+        else
+            tags="#fleeting"
+        fi
+    fi
+
+    # Create note based on type
+    local created_file
+    case "$note_type" in
+        fleeting)
+            created_file=$(sb_create_fleeting "$string_content" "$list_members" "$tags")
+            ;;
+        literature)
+            created_file=$(sb_create_literature "$string_content" "$list_members" "$tags")
+            ;;
+        structure)
+            created_file=$(sb_create_structure "$string_content" "$list_members" "$tags")
+            ;;
+        hub)
+            created_file=$(sb_create_hub "$string_content" "$list_members" "$tags")
+            ;;
+        meeting)
+            created_file=$(sb_create_meeting "$string_content" "$list_members" "$tags")
+            ;;
+        todo)
+            created_file=$(sb_create_todo "$string_content" "$list_members" "$tags")
+            ;;
+        quick_todo)
+            created_file=$(sb_create_quick_todo "$string_content" "$list_members")
+            ;;
+        *)
+            echo "Error: Unknown note type: $note_type" >&2
+            exit 1
+            ;;
+    esac
+
+    echo "Created: $created_file"
+
+    # Open in editor if requested
+    if $open_after; then
+        local editor="${EDITOR:-vi}"
+        "$editor" "$created_file"
+    fi
+}
+
+main "$@"

@@ -16,6 +16,7 @@ vim.keymap.set("n", "<C-u>", "<C-u>zz", { desc = "Motion: half page uuuuuupppupp
 
 -- lsp
 vim.keymap.set('n', '<leader>lf', vim.lsp.buf.format, { desc = 'format buffer'})
+vim.keymap.set('n', 'gd', vim.lsp.buf.definition, { desc = 'Jump to definition'})
 
 -- diagnostic keymaps
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })

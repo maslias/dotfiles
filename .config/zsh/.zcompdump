@@ -229,6 +229,7 @@ _comps=(
 'bug' '_bug'
 'buildhash' '_ispell'
 'builtin' '_builtin'
+'bun' '_bun'
 'bundle' '_bundle'
 'bunzip2' '_bzip2'
 'burst' '_mh'

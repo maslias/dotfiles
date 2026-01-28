@@ -30,6 +30,11 @@ compinit -d $XDG_CACHE_HOME/zsh/zcompdump-$ZSH_VERSION
 # export PNPM_HOME=$XDG_DATA_HOME/pnpm
 # export PATH=$PNPM_HOME:$PATH
 
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+
 #go lang
 export GOROOT=/usr/local/go
 export GOPATH=$XDG_DATA_HOME/go
@@ -49,6 +54,9 @@ export NVM_DIR=$XDG_DATA_HOME/nvm
 export CARGO_HOME=$XDG_DATA_HOME/cargo
 export RUSTUP_HOME=$XDG_DATA_HOME/rustup
 #$CARGO_HOME/env
+
+# claude code lsp
+export ENABLE_LSP_TOOLS=1
 
 
 #fzf

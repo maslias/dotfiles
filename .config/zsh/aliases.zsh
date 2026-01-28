@@ -4,11 +4,7 @@ alias ls='ls --color'
 alias nv='nvim'
 alias nv.='nvim .'
 alias lg='lazygit'
-alias sbnd="newsecondbrainnote 'daily'"
-alias sbnm="newsecondbrainnote 'meeting'"
-alias sbnt="newsecondbrainnote 'task'"
-alias sbnto="newsecondbrainnote 'todo'"
-alias sbn="newsecondbrainnote 'note'"
+alias sb="secondbrain"
 
 if command -v kubectl &>/dev/null; then
 alias k="kubectl"

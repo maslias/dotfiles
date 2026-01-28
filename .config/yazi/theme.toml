@@ -1,3 +1,5 @@
+"$schema" = "https://yazi-rs.github.io/schemas/yazi.json"
+
 [mgr]
 # tmTheme files can be found here: https://github.com/scottmckendry/cyberdream.nvim/tree/main/extras/textmate 
 syntect_theme = "../bat/themes/cyberdream.tmTheme"
@@ -40,8 +42,7 @@ rules = [
     { fg = "#5eff6c", mime = "application/rtf" },
     { fg = "#5eff6c", mime = "application/vnd.*" },
     { bold = true, fg = "#5ea1ff", mime = "inode/directory" },
-    { fg = "#ffffff", mime = "*" },
-    # { fg = "#5ef1ff", is = "orphan", mime = "inode/directory" },
+    { fg = "#ffffff", mime = "*" }
 ]
 
 [help]

@@ -1,5 +1,5 @@
 return {
-  cmd = { 'just-lsp' },
-  filetypes = { 'just' },
-  root_markers = { '.git' },
+  cmd = { "marksman" },
+  filetypes = { "markdown" },
+  root_markers = { ".git" },
 }

@@ -60,35 +60,44 @@ function y() {
 }
 
 
-if ! tmux has-session -t="dailynote" 2>/dev/null; then
+# if ! tmux has-session -t="dailynote" 2>/dev/null; then
+#
+#   # check resources for second-brain
+#   newsecondbrainnote "structure"
+#
+#   # check for todos
+#   newsecondbrainnote "todo"
+#
+#   #check for dailynote
+#   local daily_name=$(newsecondbrainnote "daily")
+#
+#   #check for dailynote
+#   local todo_name=$(newsecondbrainnote "todo")
+#
+#   #check hubs entrys
+#   hubssecondbrain
+#
+#  tmux new-session -ds "dailynote" -c "$XDG_SECOND_BRAIN_HOME/dailys" \; split-window -t "dailynote":0 -h -c "$XDG_SECOND_BRAIN_HOME/todos/" \; send-keys -t "dailynote":0.1 "nvim $daily_name" C-m \; send-keys -t "dailynote":0.2 "nvim $todo_name" C-m
+# fi
 
-  # check resources for second-brain
-  newsecondbrainnote "structure"
 
-  # check for todos
-  newsecondbrainnote "todo"
 
-  #check for dailynote
-  local daily_name=$(newsecondbrainnote "daily")
-
-  #check for dailynote
-  local todo_name=$(newsecondbrainnote "todo")
-
-  #check hubs entrys
-  hubssecondbrain
-
-  # tmux new-session -ds "dailynote" -c "$XDG_SECOND_BRAIN_HOME/dailys" "nvim $daily_name" \; split-window h "nvim $todo_name"
-  # tmux new-session -ds "dailynote" -c "$XDG_SECOND_BRAIN_HOME/dailys"
-  # tmux split-window -h -t "dailynote" -c "$XDG_SECOND_BRAIN_HOME/todos/"
-  # tmux send-keys -t "dailynote":1.1 "nvim $daily_name" C-m
-  # tmux send-keys -t "dailynote":1.2 "nvim $todo_name" C-m
- tmux new-session -ds "dailynote" -c "$XDG_SECOND_BRAIN_HOME/dailys" \; split-window -t "dailynote":0 -h -c "$XDG_SECOND_BRAIN_HOME/todos/" \; send-keys -t "dailynote":0.1 "nvim $daily_name" C-m \; send-keys -t "dailynote":0.2 "nvim $todo_name" C-m
+if ! tmux has-session -t="second-brain" 2>/dev/null; then
+  tmux new-session -ds "second-brain" -c "$XDG_SECOND_BRAIN_HOME" 
 fi
 
+local hub_todos="$XDG_SECOND_BRAIN_HOME/structure/hub-todos.md"
+if [[ -f "$hub_todos" ]]; then
+  if ! tmux has-session -t="hub-todos" 2>/dev/null; then
+    tmux new-session -ds "hub-todos" -c "$XDG_SECOND_BRAIN_HOME/structure/" \; send-keys -t "hub-todos":0.1 "nvim $hub_todos" C-m \;
+  fi
+fi
 
 if ! tmux has-session -t="$(date +"%F-%A")" 2>/dev/null; then
   tmux new-session -ds "$(date +"%F-%A")" -c "$HOME" 
 fi
+
+
 
 
 if [[  ! "$TMUX" ]]; then
