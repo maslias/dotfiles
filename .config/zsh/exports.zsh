@@ -1,4 +1,3 @@
-#xdg 
 export XDG_DATA_HOME=$HOME/.local/share
 export XDG_CONFIG_HOME=$HOME/.config
 export XDG_STATE_HOME=$HOME/.local/state
@@ -65,6 +64,8 @@ export FZF_DEFAULT_COMMAND='find . \! \( -type d -path ./.git -prune \) \! \( -t
 export FZF_CTRL_T_COMMAND='find . \! \( -type d -path ./.git -prune \) \! \( -type d -path ./remote -prune \) \! -type d \! -name '\''*.tags'\'' -printf '\''%P\n'\'
 export FZF_ALT_C_COMMAND='find . \! \( -type d -path ./.git -prune \) \! \( -type d -path ./remote -prune \)  \! -name '\''*.tags'\'' -printf '\''%P\n'\'
 
+export GDCLOUD_PATH=/Users/marciii/Downloads/google-distributed-cloud-hosted-cli
+export PATH="$GDCLOUD_PATH/bin:$PATH"
 
 #zinit
 ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
