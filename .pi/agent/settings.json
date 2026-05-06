@@ -1,0 +1,13 @@
+{
+  "lastChangelogVersion": "0.70.2",
+  "defaultProvider": "openai-codex",
+  "defaultModel": "gpt-5.5",
+  "defaultThinkingLevel": "medium",
+  "theme": "cyberdream",
+  "packages": [
+    "npm:pi-mermaid",
+    "npm:@guwidoe/pi-prompt-suggester",
+    "npm:pi-vim"
+  ],
+  "quietStartup": true
+}
